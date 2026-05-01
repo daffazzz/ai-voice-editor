@@ -113,6 +113,17 @@ export default function App() {
     setPermissionMessage('');
   };
 
+  const selectAllVisibleRobloxAssets = () => {
+    const visibleIds = filteredRobloxAssets.map(asset => asset.id);
+    setSelectedRobloxAssetIds(prev => Array.from(new Set([...prev, ...visibleIds])));
+    setPermissionMessage('');
+  };
+
+  const clearSelectedRobloxAssets = () => {
+    setSelectedRobloxAssetIds([]);
+    setPermissionMessage('');
+  };
+
   const connectRobloxApi = async () => {
     if (!robloxSettings.apiKey.trim()) {
       setIsRobloxApiConnected(false);
@@ -621,13 +632,29 @@ export default function App() {
                 <span className="text-[10px] uppercase font-black tracking-widest text-zinc-600">
                   {filteredRobloxAssets.length} Asset{filteredRobloxAssets.length === 1 ? '' : 's'} Visible
                 </span>
-                <button
-                  onClick={toggleVisibleRobloxAssets}
-                  disabled={filteredRobloxAssets.length === 0}
-                  className="text-[10px] uppercase font-black tracking-widest text-emerald-400 hover:text-emerald-300 disabled:text-zinc-700 disabled:cursor-not-allowed"
-                >
-                  Toggle Visible
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={selectAllVisibleRobloxAssets}
+                    disabled={filteredRobloxAssets.length === 0}
+                    className="text-[10px] uppercase font-black tracking-widest text-emerald-400 hover:text-emerald-300 disabled:text-zinc-700 disabled:cursor-not-allowed"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    onClick={clearSelectedRobloxAssets}
+                    disabled={selectedRobloxAssetIds.length === 0}
+                    className="text-[10px] uppercase font-black tracking-widest text-zinc-500 hover:text-white disabled:text-zinc-800 disabled:cursor-not-allowed"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    onClick={toggleVisibleRobloxAssets}
+                    disabled={filteredRobloxAssets.length === 0}
+                    className="text-[10px] uppercase font-black tracking-widest text-blue-400 hover:text-blue-300 disabled:text-zinc-700 disabled:cursor-not-allowed"
+                  >
+                    Toggle
+                  </button>
+                </div>
               </div>
 
               {filteredRobloxAssets.length === 0 ? (
