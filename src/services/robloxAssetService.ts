@@ -3,6 +3,7 @@ import { RobloxSettings, RobloxUploadStatus } from '../types';
 const CREATE_ASSET_URL = '/api/roblox-assets';
 const OPERATION_URL = '/api/roblox-operation';
 const ASSET_PERMISSIONS_URL = '/api/roblox-asset-permissions';
+const INVENTORY_ASSETS_URL = '/api/roblox-inventory-assets';
 const POLL_INTERVAL_MS = 60_000;
 
 export interface RobloxUploadResult {
@@ -38,6 +39,13 @@ export interface RobloxAssetPermissionResult {
     message?: string;
   };
   message?: string;
+}
+
+export interface RobloxInventoryAsset {
+  id: string;
+  title: string;
+  status: 'accepted' | 'reviewing' | 'rejected';
+  moderationState?: string;
 }
 
 export async function uploadAudioToRoblox(
@@ -175,6 +183,27 @@ export async function grantRobloxAssetPermissions(
   }
 
   return data || { message: 'Roblox accepted the permission request.' };
+}
+
+export async function listRobloxAudioAssets(settings: RobloxSettings): Promise<RobloxInventoryAsset[]> {
+  validateSettings(settings);
+
+  if (settings.creatorType !== 'userId') {
+    throw new Error('Loading existing assets is only supported for User creator IDs. Group inventories are not exposed by this Roblox inventory endpoint.');
+  }
+
+  const response = await fetch(`${INVENTORY_ASSETS_URL}?userId=${encodeURIComponent(settings.creatorId.trim())}`, {
+    headers: {
+      'x-roblox-api-key': settings.apiKey.trim(),
+    },
+  });
+
+  const data = await parseJsonResponse<{ assets?: RobloxInventoryAsset[]; message?: string; error?: { message?: string } }>(response);
+  if (!response.ok) {
+    throw new Error(data?.error?.message || data?.message || `Roblox asset list failed: ${response.status}`);
+  }
+
+  return data?.assets || [];
 }
 
 async function getOperation(operationPath: string, apiKey: string): Promise<RobloxOperation> {

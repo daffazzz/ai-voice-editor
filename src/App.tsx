@@ -28,8 +28,8 @@ import confetti from 'canvas-confetti';
 import { Track, MorphSettings, DEFAULT_SETTINGS, RobloxSettings, DEFAULT_ROBLOX_SETTINGS } from './types';
 import { generateNewTitle } from './services/openRouterService';
 import { morphAudio } from './services/audioProcessor';
-import { grantRobloxAssetPermissions, monitorRobloxModeration, uploadAudioToRoblox } from './services/robloxAssetService';
-import type { RobloxAssetPermissionSubject } from './services/robloxAssetService';
+import { grantRobloxAssetPermissions, listRobloxAudioAssets, monitorRobloxModeration, uploadAudioToRoblox } from './services/robloxAssetService';
+import type { RobloxAssetPermissionSubject, RobloxInventoryAsset } from './services/robloxAssetService';
 
 export default function App() {
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -43,10 +43,12 @@ export default function App() {
   const [permissionMessage, setPermissionMessage] = useState('');
   const [apiConnectionMessage, setApiConnectionMessage] = useState('');
   const [isRobloxApiConnected, setIsRobloxApiConnected] = useState(false);
+  const [remoteRobloxAssets, setRemoteRobloxAssets] = useState<RobloxInventoryAsset[]>([]);
+  const [isLoadingRobloxAssets, setIsLoadingRobloxAssets] = useState(false);
   const [isGrantingPermissions, setIsGrantingPermissions] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const robloxAssets = tracks
+  const sessionRobloxAssets = tracks
     .filter(track => track.robloxAssetId)
     .map(track => ({
       id: track.robloxAssetId as string,
@@ -54,6 +56,9 @@ export default function App() {
       status: track.uploadStatus || 'processing',
       moderationState: track.robloxModerationState,
     }))
+    .filter((asset, index, assets) => assets.findIndex(item => item.id === asset.id) === index);
+
+  const robloxAssets = [...sessionRobloxAssets, ...remoteRobloxAssets]
     .filter((asset, index, assets) => assets.findIndex(item => item.id === asset.id) === index);
 
   const filteredRobloxAssets = robloxAssets.filter(asset => (
@@ -108,20 +113,40 @@ export default function App() {
     setPermissionMessage('');
   };
 
-  const connectRobloxApi = () => {
+  const connectRobloxApi = async () => {
     if (!robloxSettings.apiKey.trim()) {
       setIsRobloxApiConnected(false);
       setApiConnectionMessage('Enter a Roblox Open Cloud API key first.');
       return;
     }
 
-    setIsRobloxApiConnected(true);
-    setApiConnectionMessage('Roblox API connected for this browser session.');
+    if (robloxSettings.creatorType !== 'userId') {
+      setIsRobloxApiConnected(false);
+      setApiConnectionMessage('Switch Creator Type to User to load existing audio assets.');
+      return;
+    }
+
+    setIsLoadingRobloxAssets(true);
+    setApiConnectionMessage('Connecting and loading Roblox audio assets...');
+
+    try {
+      const assets = await listRobloxAudioAssets(robloxSettings);
+      setRemoteRobloxAssets(assets);
+      setIsRobloxApiConnected(true);
+      setApiConnectionMessage(`Connected. Loaded ${assets.length} Roblox audio asset${assets.length === 1 ? '' : 's'}.`);
+    } catch (error: any) {
+      setIsRobloxApiConnected(false);
+      setRemoteRobloxAssets([]);
+      setApiConnectionMessage(error.message || 'Failed to connect Roblox API.');
+    } finally {
+      setIsLoadingRobloxAssets(false);
+    }
   };
 
   const disconnectRobloxApi = () => {
     setIsRobloxApiConnected(false);
     setSelectedRobloxAssetIds([]);
+    setRemoteRobloxAssets([]);
     setPermissionMessage('');
     setApiConnectionMessage('Roblox API disconnected.');
   };
@@ -488,6 +513,11 @@ export default function App() {
                 value={robloxSettings.creatorType}
                 onChange={(e) => setRobloxSettings(prev => ({ ...prev, creatorType: e.target.value as RobloxSettings['creatorType'] }))}
                 disabled={!robloxSettings.enabled}
+                onBlur={() => {
+                  setIsRobloxApiConnected(false);
+                  setRemoteRobloxAssets([]);
+                  setApiConnectionMessage('');
+                }}
                 className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-blue-500 disabled:opacity-40"
               >
                 <option value="userId">User</option>
@@ -503,6 +533,11 @@ export default function App() {
                 value={robloxSettings.creatorId}
                 onChange={(e) => setRobloxSettings(prev => ({ ...prev, creatorId: e.target.value.replace(/\D/g, '') }))}
                 disabled={!robloxSettings.enabled}
+                onBlur={() => {
+                  setIsRobloxApiConnected(false);
+                  setRemoteRobloxAssets([]);
+                  setApiConnectionMessage('');
+                }}
                 placeholder={robloxSettings.creatorType === 'userId' ? 'User ID' : 'Group ID'}
                 className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-blue-500 disabled:opacity-40"
               />
@@ -524,14 +559,14 @@ export default function App() {
               <button
                 type="button"
                 onClick={isRobloxApiConnected ? disconnectRobloxApi : connectRobloxApi}
-                disabled={!robloxSettings.enabled}
+                disabled={!robloxSettings.enabled || isLoadingRobloxAssets}
                 className={`px-4 py-2 rounded-xl border text-xs font-black uppercase tracking-widest transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                   isRobloxApiConnected
                     ? 'bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20'
                     : 'bg-blue-500/10 text-blue-400 border-blue-500/30 hover:bg-blue-500/20'
                 }`}
               >
-                {isRobloxApiConnected ? 'Disconnect' : 'Connect API'}
+                {isLoadingRobloxAssets ? 'Loading...' : isRobloxApiConnected ? 'Disconnect' : 'Connect API'}
               </button>
               <span className={`text-[10px] leading-tight ${isRobloxApiConnected ? 'text-green-400' : 'text-zinc-600'}`}>
                 {apiConnectionMessage || (isRobloxApiConnected ? 'Connected' : 'Not connected')}
