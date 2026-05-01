@@ -7,6 +7,7 @@ const POLL_INTERVAL_MS = 60_000;
 export interface RobloxUploadResult {
   assetId?: string;
   moderationState?: string;
+  operationPath?: string;
   status: Extract<RobloxUploadStatus, 'accepted' | 'reviewing' | 'rejected'>;
   message?: string;
 }
@@ -69,8 +70,14 @@ export async function uploadAudioToRoblox(
 
   onProgress?.(20, 'processing');
 
+  let shouldWait = false;
+
   while (true) {
-    await sleep(POLL_INTERVAL_MS);
+    if (shouldWait) {
+      await sleep(POLL_INTERVAL_MS);
+    }
+    shouldWait = true;
+
     onProgress?.(95, 'processing');
 
     const operation = await getOperation(operationPath, settings.apiKey);
@@ -82,13 +89,20 @@ export async function uploadAudioToRoblox(
 
       if (moderationStatus === 'reviewing') {
         onProgress?.(95, 'reviewing');
-        continue;
+        return {
+          assetId: operation.response.assetId,
+          moderationState,
+          operationPath,
+          status: 'reviewing',
+          message: 'Roblox is reviewing this asset.',
+        };
       }
 
       onProgress?.(100, moderationStatus);
       return {
         assetId: operation.response.assetId,
         moderationState,
+        operationPath,
         status: moderationStatus,
         message: moderationStatus === 'accepted' ? undefined : `Roblox moderation result: ${moderationState}`,
       };
@@ -98,6 +112,39 @@ export async function uploadAudioToRoblox(
       status: 'rejected',
       message: operation.status?.message || 'Roblox rejected the asset upload.',
     };
+  }
+}
+
+export async function monitorRobloxModeration(
+  operationPath: string,
+  apiKey: string,
+  onUpdate: (result: RobloxUploadResult) => void
+): Promise<RobloxUploadResult> {
+  while (true) {
+    await sleep(POLL_INTERVAL_MS);
+
+    const operation = await getOperation(operationPath, apiKey);
+    if (!operation.response?.assetId) continue;
+
+    const moderationState = operation.response.moderationResult?.moderationState || 'MODERATION_STATE_UNKNOWN';
+    const moderationStatus = getModerationStatus(moderationState);
+    const result: RobloxUploadResult = {
+      assetId: operation.response.assetId,
+      moderationState,
+      operationPath,
+      status: moderationStatus,
+      message: moderationStatus === 'reviewing'
+        ? 'Roblox is reviewing this asset.'
+        : moderationStatus === 'accepted'
+          ? undefined
+          : `Roblox moderation result: ${moderationState}`,
+    };
+
+    onUpdate(result);
+
+    if (moderationStatus !== 'reviewing') {
+      return result;
+    }
   }
 }
 

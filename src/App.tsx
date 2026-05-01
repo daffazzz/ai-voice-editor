@@ -25,7 +25,7 @@ import confetti from 'canvas-confetti';
 import { Track, MorphSettings, DEFAULT_SETTINGS, RobloxSettings, DEFAULT_ROBLOX_SETTINGS } from './types';
 import { generateNewTitle } from './services/openRouterService';
 import { morphAudio } from './services/audioProcessor';
-import { uploadAudioToRoblox } from './services/robloxAssetService';
+import { monitorRobloxModeration, uploadAudioToRoblox } from './services/robloxAssetService';
 
 export default function App() {
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -117,6 +117,30 @@ export default function App() {
               robloxModerationState: robloxResult.moderationState,
               uploadError: robloxResult.message,
             } : t));
+
+            if (robloxResult.status === 'reviewing' && robloxResult.operationPath) {
+              monitorRobloxModeration(
+                robloxResult.operationPath,
+                robloxSettings.apiKey,
+                (moderationResult) => {
+                  setTracks(prev => prev.map(t => t.id === track.id ? {
+                    ...t,
+                    uploadStatus: moderationResult.status,
+                    uploadProgress: moderationResult.status === 'reviewing' ? 95 : 100,
+                    robloxAssetId: moderationResult.assetId,
+                    robloxModerationState: moderationResult.moderationState,
+                    uploadError: moderationResult.message,
+                  } : t));
+                }
+              ).catch((monitorError: any) => {
+                setTracks(prev => prev.map(t => t.id === track.id ? {
+                  ...t,
+                  uploadStatus: 'error',
+                  uploadProgress: 100,
+                  uploadError: monitorError.message || 'Roblox moderation check failed',
+                } : t));
+              });
+            }
           } catch (uploadError: any) {
             setTracks(prev => prev.map((t, idx) => idx === i ? {
               ...t,
