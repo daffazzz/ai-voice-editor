@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import type { ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Upload, 
@@ -30,9 +31,9 @@ export default function App() {
   const [globalSettings, setGlobalSettings] = useState<MorphSettings>(DEFAULT_SETTINGS);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
+      const newFiles = Array.from(e.target.files) as File[];
       const newTracks: Track[] = newFiles.map(file => ({
         id: Math.random().toString(36).substr(2, 9),
         file,
@@ -107,7 +108,7 @@ export default function App() {
     if (!track.morphedUrl) return;
     const link = document.createElement('a');
     link.href = track.morphedUrl;
-    link.download = `${track.morphedTitle}.wav`;
+    link.download = `${track.morphedTitle}.mp3`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
