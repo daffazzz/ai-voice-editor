@@ -1,4 +1,4 @@
-import lamejs from 'lamejs';
+import lameJsBundleUrl from 'lamejs/lame.all.js?url';
 import { MorphSettings } from '../types';
 
 /**
@@ -55,7 +55,8 @@ export async function morphAudio(file: File, settings: MorphSettings): Promise<B
   return bufferToMp3(renderedBuffer);
 }
 
-function bufferToMp3(audioBuffer: AudioBuffer): Blob {
+async function bufferToMp3(audioBuffer: AudioBuffer): Promise<Blob> {
+  const lamejs = await loadLameJs();
   const channelCount = Math.min(audioBuffer.numberOfChannels, 2);
   const left = convertFloat32ToInt16(audioBuffer.getChannelData(0));
   const right = channelCount === 2
@@ -94,4 +95,34 @@ function convertFloat32ToInt16(input: Float32Array): Int16Array {
   }
 
   return output;
+}
+
+function loadLameJs(): Promise<LameJsGlobal> {
+  if (window.lamejs?.Mp3Encoder) {
+    return Promise.resolve(window.lamejs);
+  }
+
+  return new Promise((resolve, reject) => {
+    const existingScript = document.querySelector<HTMLScriptElement>('script[data-lamejs]');
+
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(window.lamejs));
+      existingScript.addEventListener('error', () => reject(new Error('Failed to load MP3 encoder.')));
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = lameJsBundleUrl;
+    script.async = true;
+    script.dataset.lamejs = 'true';
+    script.onload = () => {
+      if (window.lamejs?.Mp3Encoder) {
+        resolve(window.lamejs);
+      } else {
+        reject(new Error('MP3 encoder loaded without Mp3Encoder.'));
+      }
+    };
+    script.onerror = () => reject(new Error('Failed to load MP3 encoder.'));
+    document.head.appendChild(script);
+  });
 }

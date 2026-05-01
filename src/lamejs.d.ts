@@ -1,13 +1,18 @@
-declare module 'lamejs' {
-  export class Mp3Encoder {
-    constructor(channels: number, sampleRate: number, kbps: number);
-    encodeBuffer(left: Int16Array, right?: Int16Array): Int8Array;
-    flush(): Int8Array;
-  }
+declare module 'lamejs/lame.all.js?url' {
+  const url: string;
+  export default url;
+}
 
-  const lamejs: {
-    Mp3Encoder: typeof Mp3Encoder;
-  };
+declare class LameJsMp3Encoder {
+  constructor(channels: number, sampleRate: number, kbps: number);
+  encodeBuffer(left: Int16Array, right?: Int16Array): Int8Array;
+  flush(): Int8Array;
+}
 
-  export default lamejs;
+interface LameJsGlobal {
+  Mp3Encoder: typeof LameJsMp3Encoder;
+}
+
+interface Window {
+  lamejs: LameJsGlobal;
 }
