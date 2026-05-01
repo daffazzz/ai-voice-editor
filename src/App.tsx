@@ -217,7 +217,7 @@ export default function App() {
         
         // 1. Generate AI Title
         const newTitle = effectiveSettings.renameTitle
-          ? await generateNewTitle(track.originalTitle)
+          ? await generateNewTitle(track.originalTitle, effectiveSettings.renameMode)
           : track.originalTitle;
         setTracks(prev => prev.map((t, idx) => idx === i ? { ...t, morphedTitle: newTitle, progress: 35 } : t));
 
@@ -462,6 +462,29 @@ export default function App() {
            </div>
 
            <div className="lg:col-span-4 grid grid-cols-1 md:grid-cols-[auto_1fr] gap-5 border-t border-zinc-800 pt-6">
+              {globalSettings.renameTitle && (
+                <div className="md:col-span-2 flex flex-wrap items-center gap-3">
+                  <span className="text-[10px] uppercase font-black tracking-widest text-zinc-600">Rename Mode</span>
+                  {([
+                    ['clean', 'Clean Title'],
+                    ['rewrite', 'Full Rewrite'],
+                  ] as const).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setGlobalSettings(prev => ({ ...prev, renameMode: mode }))}
+                      className={`px-4 py-2 rounded-full border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                        globalSettings.renameMode === mode
+                          ? 'bg-violet-500 text-black border-violet-400'
+                          : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-white'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <label className="flex items-center gap-3 cursor-pointer group">
                 <input
                   type="checkbox"
@@ -839,6 +862,11 @@ export default function App() {
                         {track.status === 'completed' && !track.settings.renameTitle && (
                           <span className="text-[9px] font-black bg-violet-500/20 text-violet-400 border border-violet-500/30 px-2 py-0.5 rounded-full tracking-tighter uppercase ml-2">
                             Original Title
+                          </span>
+                        )}
+                        {track.status === 'completed' && track.settings.renameTitle && (
+                          <span className="text-[9px] font-black bg-violet-500/20 text-violet-400 border border-violet-500/30 px-2 py-0.5 rounded-full tracking-tighter uppercase ml-2">
+                            {track.settings.renameMode === 'clean' ? 'Title Cleaned' : 'Title Rewritten'}
                           </span>
                         )}
                       </div>

@@ -18,6 +18,7 @@ export interface Track {
 }
 
 export type RobloxUploadStatus = 'idle' | 'skipped' | 'uploading' | 'processing' | 'reviewing' | 'accepted' | 'rejected' | 'error';
+export type RenameMode = 'rewrite' | 'clean';
 
 export interface MorphSettings {
   pitch: number; // -12 to 12 semitones
@@ -26,6 +27,7 @@ export interface MorphSettings {
   bassBoost: boolean;
   scrubMetadata: boolean;
   renameTitle: boolean;
+  renameMode: RenameMode;
   removeFingerprint: boolean;
   fingerprintStrength: number; // 0 to 1
 }
@@ -37,6 +39,7 @@ export const DEFAULT_SETTINGS: MorphSettings = {
   bassBoost: false,
   scrubMetadata: true,
   renameTitle: true,
+  renameMode: 'clean',
   removeFingerprint: true,
   fingerprintStrength: 0.65
 };
