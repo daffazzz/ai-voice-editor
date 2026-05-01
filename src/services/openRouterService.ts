@@ -1,4 +1,4 @@
-const OPENROUTER_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
+const OPENROUTER_MODEL = 'openai/gpt-oss-120b:free';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const FALLBACK_ADJECTIVES = ['Velvet', 'Neon', 'Midnight', 'Golden', 'Silent', 'Crystal', 'Electric', 'Hidden'];
 const FALLBACK_NOUNS = ['Afterglow', 'Mirage', 'Horizon', 'Pulse', 'Drift', 'Signal', 'Cascade', 'Echo'];
