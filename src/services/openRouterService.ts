@@ -1,6 +1,6 @@
 const OPENROUTER_MODEL = 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const FALLBACK_ADJECTIVES = ['Velvet', 'Neon', 'Midnight', 'Golden', 'Silent', 'Crystal', 'Electric', 'Hidden'];
+const FALLBACK_ADJECTIVES = ['Lunar', 'Stellar', 'Cosmic', 'Nebula', 'Orbital', 'Solar', 'Astral', 'Galactic'];
 const FALLBACK_NOUNS = ['Afterglow', 'Mirage', 'Horizon', 'Pulse', 'Drift', 'Signal', 'Cascade', 'Echo'];
 
 export async function generateNewTitle(originalTitle: string): Promise<string> {
@@ -26,15 +26,16 @@ export async function generateNewTitle(originalTitle: string): Promise<string> {
         messages: [
           {
             role: 'system',
-            content: 'You are a creative music metadata specialist. Return only one new polished song title. Never return the same title, a case-only change, or an explanation.',
+            content: 'You are a creative music metadata specialist. Return only one new polished song title with a clear outer-space theme. Never return the same title, a case-only change, or an explanation.',
           },
           {
             role: 'user',
             content: `Rewrite this song title into a genuinely different release title.
 
 Requirements:
-- Preserve the genre context, such as keeping lo-fi titles chill.
+- Preserve the genre context, such as keeping lo-fi titles chill, while making the title clearly related to outer space.
 - Use a fresh metaphor or image, not a direct synonym swap.
+- Use space imagery such as stars, moons, planets, galaxies, nebulae, orbit, comets, satellites, or cosmic light.
 - Do not only change capitalization, punctuation, spacing, or word order.
 - Do not include these original words: ${forbiddenWords.join(', ') || '(none)'}.
 - Make it sound professional and ready for a new release.
