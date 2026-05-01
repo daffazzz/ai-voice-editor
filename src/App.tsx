@@ -20,7 +20,8 @@ import {
   Wind,
   Plus,
   ShieldCheck,
-  Fingerprint
+  Fingerprint,
+  Pencil
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Track, MorphSettings, DEFAULT_SETTINGS, RobloxSettings, DEFAULT_ROBLOX_SETTINGS } from './types';
@@ -78,7 +79,9 @@ export default function App() {
         setTracks(prev => prev.map((t, idx) => idx === i ? { ...t, settings: effectiveSettings, status: 'processing', progress: 10 } : t));
         
         // 1. Generate AI Title
-        const newTitle = await generateNewTitle(track.originalTitle);
+        const newTitle = effectiveSettings.renameTitle
+          ? await generateNewTitle(track.originalTitle)
+          : track.originalTitle;
         setTracks(prev => prev.map((t, idx) => idx === i ? { ...t, morphedTitle: newTitle, progress: 35 } : t));
 
         // 2. Morph Audio
@@ -294,6 +297,22 @@ export default function App() {
                 </div>
                 <span className="text-xs font-bold uppercase tracking-widest text-zinc-400 group-hover:text-white transition-colors">Metadata Purge</span>
               </label>
+
+              <label className="flex items-center gap-3 cursor-pointer group border-l border-zinc-800 pl-6 ml-2">
+                <input
+                  type="checkbox"
+                  checked={globalSettings.renameTitle}
+                  onChange={(e) => setGlobalSettings(prev => ({ ...prev, renameTitle: e.target.checked }))}
+                  className="hidden"
+                />
+                <div className={`w-10 h-5 rounded-full transition-colors flex items-center p-1 ${globalSettings.renameTitle ? 'bg-violet-500' : 'bg-zinc-700'}`}>
+                  <div className={`w-3 h-3 bg-white rounded-full transition-transform ${globalSettings.renameTitle ? 'translate-x-5' : 'translate-x-0'}`} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Pencil className="w-4 h-4 text-violet-400" />
+                  <span className="text-xs font-bold uppercase tracking-widest text-zinc-400 group-hover:text-white transition-colors">AI Rename</span>
+                </div>
+              </label>
            </div>
 
            <div className="lg:col-span-4 grid grid-cols-1 md:grid-cols-[auto_1fr] gap-5 border-t border-zinc-800 pt-6">
@@ -468,6 +487,11 @@ export default function App() {
                         {track.status === 'completed' && track.settings.removeFingerprint && (
                           <span className="text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full tracking-tighter uppercase ml-2">
                             Fingerprint Scrubbed
+                          </span>
+                        )}
+                        {track.status === 'completed' && !track.settings.renameTitle && (
+                          <span className="text-[9px] font-black bg-violet-500/20 text-violet-400 border border-violet-500/30 px-2 py-0.5 rounded-full tracking-tighter uppercase ml-2">
+                            Original Title
                           </span>
                         )}
                       </div>

@@ -24,6 +24,7 @@ export interface MorphSettings {
   reverb: number; // 0 to 1
   bassBoost: boolean;
   scrubMetadata: boolean;
+  renameTitle: boolean;
   removeFingerprint: boolean;
   fingerprintStrength: number; // 0 to 1
 }
@@ -34,6 +35,7 @@ export const DEFAULT_SETTINGS: MorphSettings = {
   reverb: 0.1,
   bassBoost: false,
   scrubMetadata: true,
+  renameTitle: true,
   removeFingerprint: true,
   fingerprintStrength: 0.65
 };
