@@ -21,20 +21,42 @@ import {
   Plus,
   ShieldCheck,
   Fingerprint,
-  Pencil
+  Pencil,
+  KeyRound
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Track, MorphSettings, DEFAULT_SETTINGS, RobloxSettings, DEFAULT_ROBLOX_SETTINGS } from './types';
 import { generateNewTitle } from './services/openRouterService';
 import { morphAudio } from './services/audioProcessor';
-import { monitorRobloxModeration, uploadAudioToRoblox } from './services/robloxAssetService';
+import { grantRobloxAssetPermissions, monitorRobloxModeration, uploadAudioToRoblox } from './services/robloxAssetService';
+import type { RobloxAssetPermissionSubject } from './services/robloxAssetService';
 
 export default function App() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [globalSettings, setGlobalSettings] = useState<MorphSettings>(DEFAULT_SETTINGS);
   const [robloxSettings, setRobloxSettings] = useState<RobloxSettings>(DEFAULT_ROBLOX_SETTINGS);
+  const [assetStatusFilter, setAssetStatusFilter] = useState<'all' | 'accepted' | 'rejected'>('all');
+  const [selectedRobloxAssetIds, setSelectedRobloxAssetIds] = useState<string[]>([]);
+  const [permissionSubjectType, setPermissionSubjectType] = useState<RobloxAssetPermissionSubject>('Universe');
+  const [permissionSubjectId, setPermissionSubjectId] = useState('');
+  const [permissionMessage, setPermissionMessage] = useState('');
+  const [isGrantingPermissions, setIsGrantingPermissions] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const robloxAssets = tracks
+    .filter(track => track.robloxAssetId)
+    .map(track => ({
+      id: track.robloxAssetId as string,
+      title: track.morphedTitle || track.originalTitle,
+      status: track.uploadStatus || 'processing',
+      moderationState: track.robloxModerationState,
+    }))
+    .filter((asset, index, assets) => assets.findIndex(item => item.id === asset.id) === index);
+
+  const filteredRobloxAssets = robloxAssets.filter(asset => (
+    assetStatusFilter === 'all' || asset.status === assetStatusFilter
+  ));
 
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -62,6 +84,46 @@ export default function App() {
       if (track?.morphedUrl) URL.revokeObjectURL(track.morphedUrl);
       return prev.filter(t => t.id !== id);
     });
+  };
+
+  const toggleRobloxAssetSelection = (assetId: string) => {
+    setSelectedRobloxAssetIds(prev => (
+      prev.includes(assetId)
+        ? prev.filter(id => id !== assetId)
+        : [...prev, assetId]
+    ));
+    setPermissionMessage('');
+  };
+
+  const toggleVisibleRobloxAssets = () => {
+    const visibleIds = filteredRobloxAssets.map(asset => asset.id);
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selectedRobloxAssetIds.includes(id));
+
+    setSelectedRobloxAssetIds(prev => allVisibleSelected
+      ? prev.filter(id => !visibleIds.includes(id))
+      : Array.from(new Set([...prev, ...visibleIds]))
+    );
+    setPermissionMessage('');
+  };
+
+  const grantSelectedRobloxAssetPermissions = async () => {
+    setIsGrantingPermissions(true);
+    setPermissionMessage('');
+
+    try {
+      const result = await grantRobloxAssetPermissions(
+        robloxSettings.apiKey,
+        selectedRobloxAssetIds,
+        permissionSubjectType,
+        permissionSubjectId
+      );
+      const successCount = result.successAssetIds?.length ?? selectedRobloxAssetIds.length;
+      setPermissionMessage(`Permission granted for ${successCount} asset${successCount === 1 ? '' : 's'}.`);
+    } catch (error: any) {
+      setPermissionMessage(error.message || 'Failed to grant Roblox asset permission.');
+    } finally {
+      setIsGrantingPermissions(false);
+    }
   };
 
   const processBatch = async () => {
@@ -427,6 +489,147 @@ export default function App() {
                 className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-blue-500 disabled:opacity-40"
               />
             </label>
+          </div>
+        </section>
+
+        {/* Roblox Asset Permissions */}
+        <section className="bg-zinc-950/60 border border-zinc-800 rounded-3xl p-6 mb-12 shadow-2xl">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5 mb-6">
+            <div className="flex items-start gap-3 text-zinc-400">
+              <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                <KeyRound className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <span className="text-xs font-bold uppercase tracking-widest">Asset Access Control</span>
+                <p className="mt-2 text-[11px] text-zinc-600 max-w-md leading-relaxed">
+                  Connect uploaded Roblox assets to an allowed user or experience after moderation returns an asset ID.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {(['all', 'accepted', 'rejected'] as const).map(filter => (
+                <button
+                  key={filter}
+                  onClick={() => setAssetStatusFilter(filter)}
+                  className={`px-4 py-2 rounded-full border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                    assetStatusFilter === filter
+                      ? 'bg-white text-black border-white'
+                      : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-white'
+                  }`}
+                >
+                  {filter === 'all' ? 'All' : filter}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-[10px] uppercase font-black tracking-widest text-zinc-600">
+                  {filteredRobloxAssets.length} Asset{filteredRobloxAssets.length === 1 ? '' : 's'} Visible
+                </span>
+                <button
+                  onClick={toggleVisibleRobloxAssets}
+                  disabled={filteredRobloxAssets.length === 0}
+                  className="text-[10px] uppercase font-black tracking-widest text-emerald-400 hover:text-emerald-300 disabled:text-zinc-700 disabled:cursor-not-allowed"
+                >
+                  Toggle Visible
+                </button>
+              </div>
+
+              {filteredRobloxAssets.length === 0 ? (
+                <div className="border border-dashed border-zinc-800 rounded-2xl p-8 text-center text-sm text-zinc-600">
+                  No Roblox assets match this status yet.
+                </div>
+              ) : (
+                filteredRobloxAssets.map(asset => (
+                  <label
+                    key={asset.id}
+                    className="flex items-center gap-4 bg-zinc-900/50 border border-zinc-800 rounded-2xl p-4 cursor-pointer hover:border-emerald-500/40 transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedRobloxAssetIds.includes(asset.id)}
+                      onChange={() => toggleRobloxAssetSelection(asset.id)}
+                      className="w-4 h-4 accent-emerald-500"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-bold text-sm truncate">{asset.title}</span>
+                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border uppercase ${
+                          asset.status === 'accepted'
+                            ? 'bg-green-500/10 text-green-400 border-green-500/30'
+                            : asset.status === 'rejected'
+                              ? 'bg-red-500/10 text-red-400 border-red-500/30'
+                              : 'bg-blue-500/10 text-blue-400 border-blue-500/30'
+                        }`}>
+                          {asset.status}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-zinc-600 font-mono">
+                        <span>Asset ID: {asset.id}</span>
+                        {asset.moderationState && <span>{asset.moderationState.replace('MODERATION_STATE_', '')}</span>}
+                      </div>
+                    </div>
+                  </label>
+                ))
+              )}
+            </div>
+
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5 space-y-4">
+              <label className="flex flex-col gap-2">
+                <span className="text-[10px] uppercase font-black tracking-widest text-zinc-600">Allow Target</span>
+                <select
+                  value={permissionSubjectType}
+                  onChange={(e) => {
+                    setPermissionSubjectType(e.target.value as RobloxAssetPermissionSubject);
+                    setPermissionMessage('');
+                  }}
+                  className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+                >
+                  <option value="Universe">Experience / Universe</option>
+                  <option value="User">User</option>
+                </select>
+              </label>
+
+              <label className="flex flex-col gap-2">
+                <span className="text-[10px] uppercase font-black tracking-widest text-zinc-600">
+                  {permissionSubjectType === 'Universe' ? 'Universe ID' : 'User ID'}
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={permissionSubjectId}
+                  onChange={(e) => {
+                    setPermissionSubjectId(e.target.value.replace(/\D/g, ''));
+                    setPermissionMessage('');
+                  }}
+                  placeholder={permissionSubjectType === 'Universe' ? 'Allowed experience universe ID' : 'Allowed user ID'}
+                  className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+                />
+              </label>
+
+              <div className="text-[10px] uppercase font-black tracking-widest text-zinc-600">
+                {selectedRobloxAssetIds.length} Selected
+              </div>
+
+              <button
+                onClick={grantSelectedRobloxAssetPermissions}
+                disabled={isGrantingPermissions || selectedRobloxAssetIds.length === 0 || !permissionSubjectId.trim() || !robloxSettings.apiKey.trim()}
+                className="w-full px-5 py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-black uppercase tracking-widest text-black transition-colors flex items-center justify-center gap-2"
+              >
+                {isGrantingPermissions ? <RefreshCw className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                Grant Access
+              </button>
+
+              {permissionMessage && (
+                <div className={`text-xs leading-relaxed ${permissionMessage.toLowerCase().includes('failed') || permissionMessage.toLowerCase().includes('required') ? 'text-red-300' : 'text-emerald-300'}`}>
+                  {permissionMessage}
+                </div>
+              )}
+            </div>
           </div>
         </section>
 

@@ -2,6 +2,7 @@ import { RobloxSettings, RobloxUploadStatus } from '../types';
 
 const CREATE_ASSET_URL = '/api/roblox-assets';
 const OPERATION_URL = '/api/roblox-operation';
+const ASSET_PERMISSIONS_URL = '/api/roblox-asset-permissions';
 const POLL_INTERVAL_MS = 60_000;
 
 export interface RobloxUploadResult {
@@ -25,6 +26,18 @@ interface RobloxOperation {
     code?: number;
     message?: string;
   };
+}
+
+export type RobloxAssetPermissionSubject = 'Universe' | 'User';
+
+export interface RobloxAssetPermissionResult {
+  successAssetIds?: number[];
+  errors?: unknown[];
+  error?: {
+    code?: string;
+    message?: string;
+  };
+  message?: string;
 }
 
 export async function uploadAudioToRoblox(
@@ -114,6 +127,54 @@ export async function monitorRobloxModeration(
       return result;
     }
   }
+}
+
+export async function grantRobloxAssetPermissions(
+  apiKey: string,
+  assetIds: string[],
+  subjectType: RobloxAssetPermissionSubject,
+  subjectId: string
+): Promise<RobloxAssetPermissionResult> {
+  if (!apiKey.trim()) {
+    throw new Error('Roblox API key is required.');
+  }
+
+  const cleanedAssetIds = assetIds
+    .map(assetId => assetId.trim())
+    .filter(Boolean);
+
+  if (cleanedAssetIds.length === 0) {
+    throw new Error('Select at least one Roblox asset.');
+  }
+
+  if (!subjectId.trim()) {
+    throw new Error(`${subjectType === 'Universe' ? 'Experience / Universe' : 'User'} ID is required.`);
+  }
+
+  const response = await fetch(ASSET_PERMISSIONS_URL, {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      'x-roblox-api-key': apiKey.trim(),
+    },
+    body: JSON.stringify({
+      subjectType,
+      subjectId: subjectId.trim(),
+      action: 'Use',
+      enableDeepAccessCheck: true,
+      requests: cleanedAssetIds.map(assetId => ({
+        assetId: Number(assetId),
+        grantToDependencies: true,
+      })),
+    }),
+  });
+
+  const data = await parseJsonResponse<RobloxAssetPermissionResult>(response);
+  if (!response.ok) {
+    throw new Error(data?.error?.message || data?.message || `Roblox permission grant failed: ${response.status}`);
+  }
+
+  return data || { message: 'Roblox accepted the permission request.' };
 }
 
 async function getOperation(operationPath: string, apiKey: string): Promise<RobloxOperation> {
