@@ -192,7 +192,7 @@ export default function App() {
         permissionSubjectType,
         permissionSubjectId
       );
-      const successCount = result.successAssetIds?.length ?? selectedRobloxAssetIds.length;
+      const successCount = result.successAssetIds?.length || selectedRobloxAssetIds.length;
       setPermissionMessage(`Permission granted for ${successCount} asset${successCount === 1 ? '' : 's'}.`);
     } catch (error: any) {
       setPermissionMessage(error.message || 'Failed to grant Roblox asset permission.');
