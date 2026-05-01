@@ -19,7 +19,8 @@ import {
   FileMusic,
   Wind,
   Plus,
-  ShieldCheck
+  ShieldCheck,
+  Fingerprint
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Track, MorphSettings, DEFAULT_SETTINGS, RobloxSettings, DEFAULT_ROBLOX_SETTINGS } from './types';
@@ -234,7 +235,7 @@ export default function App() {
         </header>
 
         {/* Global Settings Bar */}
-        <section className="bg-zinc-900/50 backdrop-blur-xl border border-zinc-800 rounded-3xl p-6 mb-12 flex flex-wrap items-center gap-8 shadow-2xl">
+        <section className="bg-zinc-900/50 backdrop-blur-xl border border-zinc-800 rounded-3xl p-6 mb-12 grid grid-cols-1 lg:grid-cols-[auto_1fr_1fr_auto] items-center gap-8 shadow-2xl">
            <div className="flex items-center gap-2 text-zinc-500">
              <Settings2 className="w-5 h-5" />
              <span className="text-xs font-bold uppercase tracking-widest">Global Master Settings</span>
@@ -266,7 +267,7 @@ export default function App() {
              />
            </div>
 
-           <div className="flex items-center gap-4 border-l border-zinc-800 pl-8">
+           <div className="flex flex-wrap items-center gap-4 lg:border-l border-zinc-800 lg:pl-8">
               <label className="flex items-center gap-3 cursor-pointer group">
                 <input 
                   type="checkbox" 
@@ -280,7 +281,7 @@ export default function App() {
                 <span className="text-xs font-bold uppercase tracking-widest text-zinc-400 group-hover:text-white transition-colors">Bass Deepener</span>
               </label>
 
-              <label className="flex items-center gap-3 cursor-pointer group border-l border-zinc-800 pl-8 ml-4">
+              <label className="flex items-center gap-3 cursor-pointer group border-l border-zinc-800 pl-6 ml-2">
                 <input 
                   type="checkbox" 
                   checked={globalSettings.scrubMetadata}
@@ -292,6 +293,41 @@ export default function App() {
                 </div>
                 <span className="text-xs font-bold uppercase tracking-widest text-zinc-400 group-hover:text-white transition-colors">Metadata Purge</span>
               </label>
+           </div>
+
+           <div className="lg:col-span-4 grid grid-cols-1 md:grid-cols-[auto_1fr] gap-5 border-t border-zinc-800 pt-6">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={globalSettings.removeFingerprint}
+                  onChange={(e) => setGlobalSettings(prev => ({ ...prev, removeFingerprint: e.target.checked }))}
+                  className="hidden"
+                />
+                <div className={`w-10 h-5 rounded-full transition-colors flex items-center p-1 ${globalSettings.removeFingerprint ? 'bg-emerald-500' : 'bg-zinc-700'}`}>
+                  <div className={`w-3 h-3 bg-white rounded-full transition-transform ${globalSettings.removeFingerprint ? 'translate-x-5' : 'translate-x-0'}`} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Fingerprint className="w-4 h-4 text-emerald-400" />
+                  <span className="text-xs font-bold uppercase tracking-widest text-zinc-400 group-hover:text-white transition-colors">Fingerprint Scrub</span>
+                </div>
+              </label>
+
+              <div className={`flex flex-col gap-1 min-w-[180px] transition-opacity ${globalSettings.removeFingerprint ? 'opacity-100' : 'opacity-35'}`}>
+                <div className="flex justify-between items-center text-[10px] uppercase font-bold text-zinc-500">
+                  <span>Scrub Strength</span>
+                  <span className="text-emerald-400">{Math.round(globalSettings.fingerprintStrength * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={globalSettings.fingerprintStrength}
+                  onChange={(e) => setGlobalSettings(prev => ({ ...prev, fingerprintStrength: parseFloat(e.target.value) }))}
+                  disabled={!globalSettings.removeFingerprint}
+                  className="w-full accent-emerald-500 h-1 rounded-full cursor-pointer disabled:cursor-not-allowed"
+                />
+              </div>
            </div>
         </section>
 
@@ -426,6 +462,11 @@ export default function App() {
                         {track.status === 'completed' && track.settings.scrubMetadata && (
                           <span className="text-[9px] font-black bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full tracking-tighter uppercase ml-2 animate-pulse">
                             Metadata Purged
+                          </span>
+                        )}
+                        {track.status === 'completed' && track.settings.removeFingerprint && (
+                          <span className="text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full tracking-tighter uppercase ml-2">
+                            Fingerprint Scrubbed
                           </span>
                         )}
                       </div>

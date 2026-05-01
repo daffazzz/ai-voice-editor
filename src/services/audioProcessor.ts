@@ -51,8 +51,53 @@ export async function morphAudio(file: File, settings: MorphSettings): Promise<B
   source.start(0);
 
   const renderedBuffer = await offlineCtx.startRendering();
+
+  if (settings.removeFingerprint) {
+    scrubAudioFingerprint(renderedBuffer, settings.fingerprintStrength);
+  }
   
   return bufferToMp3(renderedBuffer);
+}
+
+function scrubAudioFingerprint(audioBuffer: AudioBuffer, strength: number): void {
+  const normalizedStrength = clamp(strength, 0, 1);
+  const noiseAmount = 0.00008 + normalizedStrength * 0.00022;
+  const fadeSamples = Math.min(Math.floor(audioBuffer.sampleRate * 0.006), Math.floor(audioBuffer.length / 2));
+
+  for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+    const data = audioBuffer.getChannelData(channel);
+    let dcOffset = 0;
+
+    for (let i = 0; i < data.length; i++) {
+      dcOffset += data[i];
+    }
+
+    dcOffset /= Math.max(1, data.length);
+
+    for (let i = 0; i < data.length; i++) {
+      const fadeIn = fadeSamples > 0 && i < fadeSamples ? i / fadeSamples : 1;
+      const fadeOut = fadeSamples > 0 && i > data.length - fadeSamples ? (data.length - i) / fadeSamples : 1;
+      const triangularDither = (Math.random() - Math.random()) * noiseAmount;
+      data[i] = clampSample((data[i] - dcOffset + triangularDither) * Math.min(fadeIn, fadeOut));
+    }
+  }
+
+  if (audioBuffer.numberOfChannels > 1 && normalizedStrength > 0) {
+    decorrelateStereoChannels(audioBuffer, normalizedStrength);
+  }
+}
+
+function decorrelateStereoChannels(audioBuffer: AudioBuffer, strength: number): void {
+  const left = audioBuffer.getChannelData(0);
+  const right = audioBuffer.getChannelData(1);
+  const blend = 0.0015 + strength * 0.0035;
+  let previousLeft = left[0] || 0;
+
+  for (let i = 1; i < left.length; i++) {
+    const currentLeft = left[i];
+    right[i] = clampSample(right[i] * (1 - blend) + previousLeft * blend);
+    previousLeft = currentLeft;
+  }
 }
 
 async function bufferToMp3(audioBuffer: AudioBuffer): Promise<Blob> {
@@ -95,6 +140,14 @@ function convertFloat32ToInt16(input: Float32Array): Int16Array {
   }
 
   return output;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function clampSample(value: number): number {
+  return clamp(value, -1, 1);
 }
 
 function loadLameJs(): Promise<LameJsGlobal> {

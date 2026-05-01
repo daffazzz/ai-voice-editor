@@ -24,6 +24,8 @@ export interface MorphSettings {
   reverb: number; // 0 to 1
   bassBoost: boolean;
   scrubMetadata: boolean;
+  removeFingerprint: boolean;
+  fingerprintStrength: number; // 0 to 1
 }
 
 export const DEFAULT_SETTINGS: MorphSettings = {
@@ -31,7 +33,9 @@ export const DEFAULT_SETTINGS: MorphSettings = {
   tempo: 1.02,
   reverb: 0.1,
   bassBoost: false,
-  scrubMetadata: true
+  scrubMetadata: true,
+  removeFingerprint: true,
+  fingerprintStrength: 0.65
 };
 
 export interface RobloxSettings {
