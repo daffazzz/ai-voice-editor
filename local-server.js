@@ -25,6 +25,16 @@ const vite = await createViteServer({
 
 app.use(vite.middlewares);
 
+app.use((error, req, res, _next) => {
+  console.error('Local server request failed:', error);
+  if (res.headersSent) return;
+
+  res.status(error.statusCode || error.status || 500).json({
+    message: error.message || 'Local server request failed.',
+    path: req.originalUrl,
+  });
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`SonicMorph local server running at http://localhost:${PORT}`);
   console.log(`Upload proxy limit: ${MAX_UPLOAD_SIZE}`);

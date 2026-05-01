@@ -32,6 +32,10 @@ export default async function handler(req, res) {
     res.setHeader('content-type', robloxResponse.headers.get('content-type') || 'application/json');
     res.send(text);
   } catch (error) {
-    res.status(500).json({ message: error.message || 'Roblox proxy operation check failed.' });
+    console.error('Roblox operation proxy failed:', error);
+    res.status(502).json({
+      message: error.message || 'Roblox proxy operation check failed.',
+      operationId,
+    });
   }
 }
