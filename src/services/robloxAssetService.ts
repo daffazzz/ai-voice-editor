@@ -46,6 +46,7 @@ export interface RobloxInventoryAsset {
   title: string;
   status: 'accepted' | 'reviewing' | 'rejected';
   moderationState?: string;
+  durationSeconds?: number;
 }
 
 export async function uploadAudioToRoblox(

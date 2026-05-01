@@ -6,6 +6,7 @@ export interface Track {
   status: 'pending' | 'processing' | 'completed' | 'error';
   progress: number;
   previewUrl: string;
+  durationSeconds?: number;
   morphedUrl?: string; // Blob URL of the processed audio
   robloxAssetId?: string;
   robloxModerationState?: string;

@@ -55,6 +55,7 @@ export default function App() {
       title: track.morphedTitle || track.originalTitle,
       status: track.uploadStatus || 'processing',
       moderationState: track.robloxModerationState,
+      durationSeconds: track.durationSeconds,
     }))
     .filter((asset, index, assets) => assets.findIndex(item => item.id === asset.id) === index);
 
@@ -81,7 +82,20 @@ export default function App() {
         settings: { ...globalSettings }
       }));
       setTracks(prev => [...prev, ...newTracks]);
+      newTracks.forEach(loadTrackDuration);
     }
+  };
+
+  const loadTrackDuration = (track: Track) => {
+    const audio = new Audio(track.previewUrl);
+    audio.preload = 'metadata';
+    audio.onloadedmetadata = () => {
+      if (Number.isFinite(audio.duration)) {
+        setTracks(prev => prev.map(item => (
+          item.id === track.id ? { ...item, durationSeconds: audio.duration } : item
+        )));
+      }
+    };
   };
 
   const removeTrack = (id: string) => {
@@ -318,6 +332,15 @@ export default function App() {
 
   const downloadAll = () => {
     tracks.filter(t => t.status === 'completed').forEach(downloadTrack);
+  };
+
+  const formatDuration = (durationSeconds?: number) => {
+    if (!durationSeconds || !Number.isFinite(durationSeconds)) return '--';
+
+    const totalSeconds = Math.max(0, Math.round(durationSeconds));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -688,6 +711,7 @@ export default function App() {
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-zinc-600 font-mono">
                         <span>Asset ID: {asset.id}</span>
+                        <span>Duration: {formatDuration(asset.durationSeconds)}</span>
                         {asset.moderationState && <span>{asset.moderationState.replace('MODERATION_STATE_', '')}</span>}
                       </div>
                     </div>
@@ -817,6 +841,9 @@ export default function App() {
                             Original Title
                           </span>
                         )}
+                      </div>
+                      <div className="text-[10px] text-zinc-600 font-mono uppercase">
+                        Duration: {formatDuration(track.durationSeconds)}
                       </div>
                       {track.uploadStatus && track.uploadStatus !== 'idle' && (
                         <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase font-black tracking-wider">
