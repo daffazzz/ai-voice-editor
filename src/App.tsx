@@ -74,14 +74,15 @@ export default function App() {
       if (track.status === 'completed') continue;
 
       try {
-        setTracks(prev => prev.map((t, idx) => idx === i ? { ...t, status: 'processing', progress: 10 } : t));
+        const effectiveSettings = { ...globalSettings };
+        setTracks(prev => prev.map((t, idx) => idx === i ? { ...t, settings: effectiveSettings, status: 'processing', progress: 10 } : t));
         
         // 1. Generate AI Title
         const newTitle = await generateNewTitle(track.originalTitle);
         setTracks(prev => prev.map((t, idx) => idx === i ? { ...t, morphedTitle: newTitle, progress: 35 } : t));
 
         // 2. Morph Audio
-        const morphedBlob = await morphAudio(track.file, track.settings);
+        const morphedBlob = await morphAudio(track.file, effectiveSettings);
         const morphedUrl = URL.createObjectURL(morphedBlob);
 
         setTracks(prev => prev.map((t, idx) => idx === i ? { 
