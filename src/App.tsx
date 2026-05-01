@@ -118,7 +118,7 @@ export default function App() {
               uploadError: robloxResult.message,
             } : t));
 
-            if (robloxResult.status === 'reviewing' && robloxResult.operationPath) {
+            if (robloxResult.operationPath && ['processing', 'reviewing'].includes(robloxResult.status)) {
               monitorRobloxModeration(
                 robloxResult.operationPath,
                 robloxSettings.apiKey,

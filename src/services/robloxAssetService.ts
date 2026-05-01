@@ -8,7 +8,7 @@ export interface RobloxUploadResult {
   assetId?: string;
   moderationState?: string;
   operationPath?: string;
-  status: Extract<RobloxUploadStatus, 'accepted' | 'reviewing' | 'rejected'>;
+  status: Extract<RobloxUploadStatus, 'processing' | 'accepted' | 'reviewing' | 'rejected'>;
   message?: string;
 }
 
@@ -69,50 +69,11 @@ export async function uploadAudioToRoblox(
   }
 
   onProgress?.(20, 'processing');
-
-  let shouldWait = false;
-
-  while (true) {
-    if (shouldWait) {
-      await sleep(POLL_INTERVAL_MS);
-    }
-    shouldWait = true;
-
-    onProgress?.(95, 'processing');
-
-    const operation = await getOperation(operationPath, settings.apiKey);
-    if (!operation.done) continue;
-
-    if (operation.response?.assetId) {
-      const moderationState = operation.response.moderationResult?.moderationState || 'MODERATION_STATE_UNKNOWN';
-      const moderationStatus = getModerationStatus(moderationState);
-
-      if (moderationStatus === 'reviewing') {
-        onProgress?.(95, 'reviewing');
-        return {
-          assetId: operation.response.assetId,
-          moderationState,
-          operationPath,
-          status: 'reviewing',
-          message: 'Roblox is reviewing this asset.',
-        };
-      }
-
-      onProgress?.(100, moderationStatus);
-      return {
-        assetId: operation.response.assetId,
-        moderationState,
-        operationPath,
-        status: moderationStatus,
-        message: moderationStatus === 'accepted' ? undefined : `Roblox moderation result: ${moderationState}`,
-      };
-    }
-
-    return {
-      status: 'rejected',
-      message: operation.status?.message || 'Roblox rejected the asset upload.',
-    };
-  }
+  return {
+    operationPath,
+    status: 'processing',
+    message: 'Roblox accepted the upload request. Waiting for asset processing.',
+  };
 }
 
 export async function monitorRobloxModeration(
@@ -124,7 +85,14 @@ export async function monitorRobloxModeration(
     await sleep(POLL_INTERVAL_MS);
 
     const operation = await getOperation(operationPath, apiKey);
-    if (!operation.response?.assetId) continue;
+    if (!operation.response?.assetId) {
+      onUpdate({
+        operationPath,
+        status: 'processing',
+        message: operation.status?.message || 'Roblox is still processing this upload.',
+      });
+      continue;
+    }
 
     const moderationState = operation.response.moderationResult?.moderationState || 'MODERATION_STATE_UNKNOWN';
     const moderationStatus = getModerationStatus(moderationState);
