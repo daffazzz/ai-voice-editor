@@ -16,7 +16,7 @@ export interface Track {
   settings: MorphSettings;
 }
 
-export type RobloxUploadStatus = 'idle' | 'skipped' | 'uploading' | 'processing' | 'accepted' | 'rejected' | 'error';
+export type RobloxUploadStatus = 'idle' | 'skipped' | 'uploading' | 'processing' | 'reviewing' | 'accepted' | 'rejected' | 'error';
 
 export interface MorphSettings {
   pitch: number; // -12 to 12 semitones

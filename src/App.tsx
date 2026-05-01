@@ -416,7 +416,7 @@ export default function App() {
                           }`}>
                             Roblox: {track.uploadStatus}
                           </span>
-                          {typeof track.uploadProgress === 'number' && ['uploading', 'processing'].includes(track.uploadStatus) && (
+                          {typeof track.uploadProgress === 'number' && ['uploading', 'processing', 'reviewing'].includes(track.uploadStatus) && (
                             <span className="text-zinc-500">{track.uploadProgress}%</span>
                           )}
                           {track.robloxAssetId && (

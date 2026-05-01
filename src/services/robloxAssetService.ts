@@ -2,13 +2,12 @@ import { RobloxSettings, RobloxUploadStatus } from '../types';
 
 const CREATE_ASSET_URL = '/api/roblox-assets';
 const OPERATION_URL = '/api/roblox-operation';
-const POLL_INTERVAL_MS = 2000;
-const MAX_POLL_ATTEMPTS = 60;
+const POLL_INTERVAL_MS = 60_000;
 
 export interface RobloxUploadResult {
   assetId?: string;
   moderationState?: string;
-  status: Extract<RobloxUploadStatus, 'accepted' | 'rejected'>;
+  status: Extract<RobloxUploadStatus, 'accepted' | 'reviewing' | 'rejected'>;
   message?: string;
 }
 
@@ -70,24 +69,28 @@ export async function uploadAudioToRoblox(
 
   onProgress?.(20, 'processing');
 
-  for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
+  while (true) {
     await sleep(POLL_INTERVAL_MS);
-    const pollProgress = Math.min(95, 20 + Math.round(((attempt + 1) / MAX_POLL_ATTEMPTS) * 75));
-    onProgress?.(pollProgress, 'processing');
+    onProgress?.(95, 'processing');
 
     const operation = await getOperation(operationPath, settings.apiKey);
     if (!operation.done) continue;
 
     if (operation.response?.assetId) {
       const moderationState = operation.response.moderationResult?.moderationState || 'MODERATION_STATE_UNKNOWN';
-      const accepted = moderationState === 'MODERATION_STATE_APPROVED';
+      const moderationStatus = getModerationStatus(moderationState);
 
-      onProgress?.(100, accepted ? 'accepted' : 'rejected');
+      if (moderationStatus === 'reviewing') {
+        onProgress?.(95, 'reviewing');
+        continue;
+      }
+
+      onProgress?.(100, moderationStatus);
       return {
         assetId: operation.response.assetId,
         moderationState,
-        status: accepted ? 'accepted' : 'rejected',
-        message: accepted ? undefined : `Roblox moderation result: ${moderationState}`,
+        status: moderationStatus,
+        message: moderationStatus === 'accepted' ? undefined : `Roblox moderation result: ${moderationState}`,
       };
     }
 
@@ -96,8 +99,6 @@ export async function uploadAudioToRoblox(
       message: operation.status?.message || 'Roblox rejected the asset upload.',
     };
   }
-
-  throw new Error('Roblox upload is still processing. Try checking the asset later.');
 }
 
 async function getOperation(operationPath: string, apiKey: string): Promise<RobloxOperation> {
@@ -149,6 +150,20 @@ function sanitizeFilename(name: string): string {
   return sanitizeDisplayName(name)
     .replace(/[^\w.-]+/g, '_')
     .replace(/^_+|_+$/g, '') || 'sonicmorph-audio';
+}
+
+function getModerationStatus(moderationState: string): Extract<RobloxUploadStatus, 'accepted' | 'reviewing' | 'rejected'> {
+  const state = moderationState.toUpperCase();
+
+  if (state.includes('APPROVED') || state.includes('ACCEPTED')) {
+    return 'accepted';
+  }
+
+  if (state.includes('REJECTED') || state.includes('DENIED') || state.includes('DECLINED') || state.includes('BLOCKED')) {
+    return 'rejected';
+  }
+
+  return 'reviewing';
 }
 
 function sleep(ms: number): Promise<void> {
