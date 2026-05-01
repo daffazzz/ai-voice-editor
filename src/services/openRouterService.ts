@@ -1,11 +1,10 @@
 const OPENROUTER_MODEL = 'openai/gpt-oss-120b:free';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const FALLBACK_ADJECTIVES = ['Velvet', 'Neon', 'Midnight', 'Golden', 'Silent', 'Crystal', 'Electric', 'Hidden'];
-const FALLBACK_NOUNS = ['Afterglow', 'Mirage', 'Horizon', 'Pulse', 'Drift', 'Signal', 'Cascade', 'Echo'];
+const FALLBACK_MODIFIERS = ['New', 'Deep', 'Soft', 'Wild', 'Late', 'Lost', 'Bright', 'Quiet', 'Slow', 'Golden', 'Electric', 'Hidden'];
+const FALLBACK_SUFFIXES = ['Version', 'Feeling', 'Story', 'Memory', 'Echo', 'Signal', 'Dream', 'Motion', 'Scene', 'Moment', 'Shadow', 'Light'];
 
 export async function generateNewTitle(originalTitle: string): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
-  const forbiddenWords = getMeaningfulWords(originalTitle);
 
   if (!apiKey) {
     console.warn('Missing OPENROUTER_API_KEY. Falling back to local title.');
@@ -26,7 +25,7 @@ export async function generateNewTitle(originalTitle: string): Promise<string> {
         messages: [
           {
             role: 'system',
-            content: 'You are a creative music metadata specialist. Return only one new polished song title that stays meaningfully related to the original title. Never return the same title, a case-only change, or an explanation.',
+            content: 'You rename songs for release metadata. Return one polished title that clearly relates to the original title without becoming generic. Never return an explanation.',
           },
           {
             role: 'user',
@@ -34,11 +33,12 @@ export async function generateNewTitle(originalTitle: string): Promise<string> {
 
 Requirements:
 - Preserve the meaning, mood, language, and genre context of the original title.
-- Use a fresh metaphor or image, not a direct synonym swap.
+- Prefer a natural variation, alternate phrase, or related image over a vague generic title.
 - Keep the new title clearly connected to the original title's theme, feeling, or subject.
 - Do not force outer-space, moon, planet, galaxy, nebula, orbit, comet, satellite, or cosmic wording unless the original title already has that theme.
 - Do not only change capitalization, punctuation, spacing, or word order.
-- Do not include these original words: ${forbiddenWords.join(', ') || '(none)'}.
+- You may reuse one important original word when needed to keep the title related, but do not return the exact same title.
+- Avoid generic words like Horizon, Afterglow, Mirage, Pulse, Drift, Signal, Cascade, Echo unless they genuinely fit the original.
 - Make it sound professional and ready for a new release.
 - Return only the new title string, 2 to 5 words, Title Case.
 
@@ -88,9 +88,11 @@ function isTooSimilarTitle(originalTitle: string, candidateTitle: string): boole
 
   const originalWords = getMeaningfulWords(originalTitle);
   const candidateWords = getMeaningfulWords(candidateTitle);
+  if (candidate.includes('horizon') && !original.includes('horizon')) return true;
+
   const reusedWords = candidateWords.filter(word => originalWords.includes(word));
 
-  return candidateWords.length > 0 && reusedWords.length / candidateWords.length >= 0.5;
+  return candidateWords.length > 1 && reusedWords.length === candidateWords.length;
 }
 
 function normalizeTitle(title: string): string {
@@ -109,9 +111,24 @@ function getMeaningfulWords(title: string): string[] {
 }
 
 function createFallbackTitle(originalTitle: string): string {
-  const seed = [...normalizeTitle(originalTitle)].reduce((total, char) => total + char.charCodeAt(0), 0);
-  const adjective = FALLBACK_ADJECTIVES[seed % FALLBACK_ADJECTIVES.length];
-  const noun = FALLBACK_NOUNS[Math.floor(seed / FALLBACK_ADJECTIVES.length) % FALLBACK_NOUNS.length];
+  const seed = getSeed(originalTitle);
+  const meaningfulWords = getMeaningfulWords(originalTitle);
+  const anchor = meaningfulWords[seed % Math.max(1, meaningfulWords.length)];
+  const titleAnchor = anchor ? toTitleWord(anchor) : 'Song';
+  const modifier = FALLBACK_MODIFIERS[seed % FALLBACK_MODIFIERS.length];
+  const suffix = FALLBACK_SUFFIXES[Math.floor(seed / FALLBACK_MODIFIERS.length) % FALLBACK_SUFFIXES.length];
 
-  return `${adjective} ${noun}`;
+  if (anchor) {
+    return seed % 2 === 0 ? `${modifier} ${titleAnchor}` : `${titleAnchor} ${suffix}`;
+  }
+
+  return `${modifier} ${suffix}`;
+}
+
+function getSeed(value: string): number {
+  return [...normalizeTitle(value)].reduce((total, char) => total + char.charCodeAt(0), 0);
+}
+
+function toTitleWord(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 }
