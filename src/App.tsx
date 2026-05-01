@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Track, MorphSettings, DEFAULT_SETTINGS } from './types';
-import { generateNewTitle } from './services/geminiService';
+import { generateNewTitle } from './services/openRouterService';
 import { morphAudio } from './services/audioProcessor';
 
 export default function App() {
