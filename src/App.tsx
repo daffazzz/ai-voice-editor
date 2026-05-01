@@ -18,17 +18,20 @@ import {
   AlertCircle,
   FileMusic,
   Wind,
-  Plus
+  Plus,
+  ShieldCheck
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { Track, MorphSettings, DEFAULT_SETTINGS } from './types';
+import { Track, MorphSettings, DEFAULT_SETTINGS, RobloxSettings, DEFAULT_ROBLOX_SETTINGS } from './types';
 import { generateNewTitle } from './services/openRouterService';
 import { morphAudio } from './services/audioProcessor';
+import { uploadAudioToRoblox } from './services/robloxAssetService';
 
 export default function App() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [globalSettings, setGlobalSettings] = useState<MorphSettings>(DEFAULT_SETTINGS);
+  const [robloxSettings, setRobloxSettings] = useState<RobloxSettings>(DEFAULT_ROBLOX_SETTINGS);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -42,6 +45,8 @@ export default function App() {
         status: 'pending',
         progress: 0,
         previewUrl: URL.createObjectURL(file),
+        uploadStatus: 'idle',
+        uploadProgress: 0,
         settings: { ...globalSettings }
       }));
       setTracks(prev => [...prev, ...newTracks]);
@@ -72,7 +77,7 @@ export default function App() {
         
         // 1. Generate AI Title
         const newTitle = await generateNewTitle(track.originalTitle);
-        setTracks(prev => prev.map((t, idx) => idx === i ? { ...t, morphedTitle: newTitle, progress: 40 } : t));
+        setTracks(prev => prev.map((t, idx) => idx === i ? { ...t, morphedTitle: newTitle, progress: 35 } : t));
 
         // 2. Morph Audio
         const morphedBlob = await morphAudio(track.file, track.settings);
@@ -80,10 +85,55 @@ export default function App() {
 
         setTracks(prev => prev.map((t, idx) => idx === i ? { 
           ...t, 
-          status: 'completed', 
           morphedUrl,
-          progress: 100 
+          progress: robloxSettings.enabled ? 60 : 100,
+          uploadStatus: robloxSettings.enabled ? 'uploading' : 'skipped',
+          uploadProgress: robloxSettings.enabled ? 0 : 100,
         } : t));
+
+        if (robloxSettings.enabled) {
+          try {
+            const robloxResult = await uploadAudioToRoblox(
+              morphedBlob,
+              newTitle,
+              robloxSettings,
+              (uploadProgress, uploadStatus) => {
+                setTracks(prev => prev.map((t, idx) => idx === i ? {
+                  ...t,
+                  uploadStatus,
+                  uploadProgress,
+                  progress: Math.min(99, 60 + Math.round(uploadProgress * 0.39)),
+                } : t));
+              }
+            );
+
+            setTracks(prev => prev.map((t, idx) => idx === i ? {
+              ...t,
+              status: 'completed',
+              progress: 100,
+              uploadStatus: robloxResult.status,
+              uploadProgress: 100,
+              robloxAssetId: robloxResult.assetId,
+              robloxModerationState: robloxResult.moderationState,
+              uploadError: robloxResult.message,
+            } : t));
+          } catch (uploadError: any) {
+            setTracks(prev => prev.map((t, idx) => idx === i ? {
+              ...t,
+              status: 'completed',
+              progress: 100,
+              uploadStatus: 'error',
+              uploadProgress: 100,
+              uploadError: uploadError.message || 'Roblox upload failed',
+            } : t));
+          }
+        } else {
+          setTracks(prev => prev.map((t, idx) => idx === i ? {
+            ...t,
+            status: 'completed',
+            progress: 100,
+          } : t));
+        }
 
       } catch (err: any) {
         console.error(err);
@@ -221,6 +271,85 @@ export default function App() {
            </div>
         </section>
 
+        {/* Roblox Upload Settings */}
+        <section className="bg-zinc-950/60 border border-zinc-800 rounded-3xl p-6 mb-12 grid grid-cols-1 xl:grid-cols-[auto_1fr] gap-6 shadow-2xl">
+          <div className="flex items-start gap-3 text-zinc-400">
+            <div className="p-2 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+              <ShieldCheck className="w-5 h-5 text-blue-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold uppercase tracking-widest">Roblox Auto Upload</span>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={robloxSettings.enabled}
+                    onChange={(e) => setRobloxSettings(prev => ({ ...prev, enabled: e.target.checked }))}
+                    className="hidden"
+                  />
+                  <div className={`w-10 h-5 rounded-full transition-colors flex items-center p-1 ${robloxSettings.enabled ? 'bg-blue-500' : 'bg-zinc-700'}`}>
+                    <div className={`w-3 h-3 bg-white rounded-full transition-transform ${robloxSettings.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </div>
+                </label>
+              </div>
+              <p className="mt-2 text-[11px] text-zinc-600 max-w-sm leading-relaxed">
+                Upload runs after morphing, one track at a time. API keys entered here stay in this browser session.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <label className="flex flex-col gap-2">
+              <span className="text-[10px] uppercase font-black tracking-widest text-zinc-600">API Key</span>
+              <input
+                type="password"
+                value={robloxSettings.apiKey}
+                onChange={(e) => setRobloxSettings(prev => ({ ...prev, apiKey: e.target.value }))}
+                disabled={!robloxSettings.enabled}
+                placeholder="Roblox Open Cloud key"
+                className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-blue-500 disabled:opacity-40"
+              />
+            </label>
+
+            <label className="flex flex-col gap-2">
+              <span className="text-[10px] uppercase font-black tracking-widest text-zinc-600">Creator Type</span>
+              <select
+                value={robloxSettings.creatorType}
+                onChange={(e) => setRobloxSettings(prev => ({ ...prev, creatorType: e.target.value as RobloxSettings['creatorType'] }))}
+                disabled={!robloxSettings.enabled}
+                className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-blue-500 disabled:opacity-40"
+              >
+                <option value="userId">User</option>
+                <option value="groupId">Group</option>
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-2">
+              <span className="text-[10px] uppercase font-black tracking-widest text-zinc-600">Creator ID</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={robloxSettings.creatorId}
+                onChange={(e) => setRobloxSettings(prev => ({ ...prev, creatorId: e.target.value.replace(/\D/g, '') }))}
+                disabled={!robloxSettings.enabled}
+                placeholder={robloxSettings.creatorType === 'userId' ? 'User ID' : 'Group ID'}
+                className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-blue-500 disabled:opacity-40"
+              />
+            </label>
+
+            <label className="flex flex-col gap-2">
+              <span className="text-[10px] uppercase font-black tracking-widest text-zinc-600">Description</span>
+              <input
+                type="text"
+                value={robloxSettings.description}
+                onChange={(e) => setRobloxSettings(prev => ({ ...prev, description: e.target.value }))}
+                disabled={!robloxSettings.enabled}
+                className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-blue-500 disabled:opacity-40"
+              />
+            </label>
+          </div>
+        </section>
+
         {/* Tracks List */}
         <div className="space-y-4 relative">
           <AnimatePresence mode="popLayout">
@@ -276,6 +405,38 @@ export default function App() {
                           </span>
                         )}
                       </div>
+                      {track.uploadStatus && track.uploadStatus !== 'idle' && (
+                        <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase font-black tracking-wider">
+                          <span className={`px-2 py-0.5 rounded-full border ${
+                            track.uploadStatus === 'accepted'
+                              ? 'bg-green-500/10 text-green-400 border-green-500/30'
+                              : track.uploadStatus === 'rejected' || track.uploadStatus === 'error'
+                                ? 'bg-red-500/10 text-red-400 border-red-500/30'
+                                : 'bg-blue-500/10 text-blue-400 border-blue-500/30'
+                          }`}>
+                            Roblox: {track.uploadStatus}
+                          </span>
+                          {typeof track.uploadProgress === 'number' && ['uploading', 'processing'].includes(track.uploadStatus) && (
+                            <span className="text-zinc-500">{track.uploadProgress}%</span>
+                          )}
+                          {track.robloxAssetId && (
+                            <a
+                              href={`https://create.roblox.com/store/asset/${track.robloxAssetId}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-blue-300 hover:text-blue-200"
+                            >
+                              Asset ID: {track.robloxAssetId}
+                            </a>
+                          )}
+                          {track.robloxModerationState && (
+                            <span className="text-zinc-500">{track.robloxModerationState.replace('MODERATION_STATE_', '')}</span>
+                          )}
+                          {track.uploadError && (
+                            <span className="text-red-300 normal-case tracking-normal truncate max-w-[360px]">{track.uploadError}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Progress / Actions */}

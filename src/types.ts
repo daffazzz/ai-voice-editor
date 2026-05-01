@@ -7,9 +7,16 @@ export interface Track {
   progress: number;
   previewUrl: string;
   morphedUrl?: string; // Blob URL of the processed audio
+  robloxAssetId?: string;
+  robloxModerationState?: string;
+  uploadStatus?: RobloxUploadStatus;
+  uploadProgress?: number;
+  uploadError?: string;
   error?: string;
   settings: MorphSettings;
 }
+
+export type RobloxUploadStatus = 'idle' | 'skipped' | 'uploading' | 'processing' | 'accepted' | 'rejected' | 'error';
 
 export interface MorphSettings {
   pitch: number; // -12 to 12 semitones
@@ -25,4 +32,20 @@ export const DEFAULT_SETTINGS: MorphSettings = {
   reverb: 0.1,
   bassBoost: false,
   scrubMetadata: true
+};
+
+export interface RobloxSettings {
+  enabled: boolean;
+  apiKey: string;
+  creatorType: 'userId' | 'groupId';
+  creatorId: string;
+  description: string;
+}
+
+export const DEFAULT_ROBLOX_SETTINGS: RobloxSettings = {
+  enabled: false,
+  apiKey: '',
+  creatorType: 'userId',
+  creatorId: '',
+  description: 'Uploaded by SonicMorph AI'
 };
