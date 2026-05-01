@@ -41,6 +41,8 @@ export default function App() {
   const [permissionSubjectType, setPermissionSubjectType] = useState<RobloxAssetPermissionSubject>('Universe');
   const [permissionSubjectId, setPermissionSubjectId] = useState('');
   const [permissionMessage, setPermissionMessage] = useState('');
+  const [apiConnectionMessage, setApiConnectionMessage] = useState('');
+  const [isRobloxApiConnected, setIsRobloxApiConnected] = useState(false);
   const [isGrantingPermissions, setIsGrantingPermissions] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -106,7 +108,30 @@ export default function App() {
     setPermissionMessage('');
   };
 
+  const connectRobloxApi = () => {
+    if (!robloxSettings.apiKey.trim()) {
+      setIsRobloxApiConnected(false);
+      setApiConnectionMessage('Enter a Roblox Open Cloud API key first.');
+      return;
+    }
+
+    setIsRobloxApiConnected(true);
+    setApiConnectionMessage('Roblox API connected for this browser session.');
+  };
+
+  const disconnectRobloxApi = () => {
+    setIsRobloxApiConnected(false);
+    setSelectedRobloxAssetIds([]);
+    setPermissionMessage('');
+    setApiConnectionMessage('Roblox API disconnected.');
+  };
+
   const grantSelectedRobloxAssetPermissions = async () => {
+    if (!isRobloxApiConnected) {
+      setPermissionMessage('Connect the Roblox API before granting access.');
+      return;
+    }
+
     setIsGrantingPermissions(true);
     setPermissionMessage('');
 
@@ -446,7 +471,11 @@ export default function App() {
               <input
                 type="password"
                 value={robloxSettings.apiKey}
-                onChange={(e) => setRobloxSettings(prev => ({ ...prev, apiKey: e.target.value }))}
+                onChange={(e) => {
+                  setRobloxSettings(prev => ({ ...prev, apiKey: e.target.value }));
+                  setIsRobloxApiConnected(false);
+                  setApiConnectionMessage('');
+                }}
                 disabled={!robloxSettings.enabled}
                 placeholder="Roblox Open Cloud key"
                 className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-blue-500 disabled:opacity-40"
@@ -489,6 +518,25 @@ export default function App() {
                 className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-blue-500 disabled:opacity-40"
               />
             </label>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-[10px] uppercase font-black tracking-widest text-zinc-600">API Link</span>
+              <button
+                type="button"
+                onClick={isRobloxApiConnected ? disconnectRobloxApi : connectRobloxApi}
+                disabled={!robloxSettings.enabled}
+                className={`px-4 py-2 rounded-xl border text-xs font-black uppercase tracking-widest transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                  isRobloxApiConnected
+                    ? 'bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20'
+                    : 'bg-blue-500/10 text-blue-400 border-blue-500/30 hover:bg-blue-500/20'
+                }`}
+              >
+                {isRobloxApiConnected ? 'Disconnect' : 'Connect API'}
+              </button>
+              <span className={`text-[10px] leading-tight ${isRobloxApiConnected ? 'text-green-400' : 'text-zinc-600'}`}>
+                {apiConnectionMessage || (isRobloxApiConnected ? 'Connected' : 'Not connected')}
+              </span>
+            </div>
           </div>
         </section>
 
@@ -504,6 +552,14 @@ export default function App() {
                 <p className="mt-2 text-[11px] text-zinc-600 max-w-md leading-relaxed">
                   Connect uploaded Roblox assets to an allowed user or experience after moderation returns an asset ID.
                 </p>
+                <div className={`mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest ${
+                  isRobloxApiConnected
+                    ? 'bg-green-500/10 text-green-400 border-green-500/30'
+                    : 'bg-zinc-900 text-zinc-500 border-zinc-800'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${isRobloxApiConnected ? 'bg-green-400' : 'bg-zinc-700'}`} />
+                  {isRobloxApiConnected ? 'API Connected' : 'Connect API First'}
+                </div>
               </div>
             </div>
 
@@ -587,7 +643,8 @@ export default function App() {
                     setPermissionSubjectType(e.target.value as RobloxAssetPermissionSubject);
                     setPermissionMessage('');
                   }}
-                  className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+                  disabled={!isRobloxApiConnected}
+                  className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-emerald-500 disabled:opacity-40"
                 >
                   <option value="Universe">Experience / Universe</option>
                   <option value="User">User</option>
@@ -606,8 +663,9 @@ export default function App() {
                     setPermissionSubjectId(e.target.value.replace(/\D/g, ''));
                     setPermissionMessage('');
                   }}
+                  disabled={!isRobloxApiConnected}
                   placeholder={permissionSubjectType === 'Universe' ? 'Allowed experience universe ID' : 'Allowed user ID'}
-                  className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+                  className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-emerald-500 disabled:opacity-40"
                 />
               </label>
 
@@ -617,7 +675,7 @@ export default function App() {
 
               <button
                 onClick={grantSelectedRobloxAssetPermissions}
-                disabled={isGrantingPermissions || selectedRobloxAssetIds.length === 0 || !permissionSubjectId.trim() || !robloxSettings.apiKey.trim()}
+                disabled={isGrantingPermissions || !isRobloxApiConnected || selectedRobloxAssetIds.length === 0 || !permissionSubjectId.trim() || !robloxSettings.apiKey.trim()}
                 className="w-full px-5 py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-black uppercase tracking-widest text-black transition-colors flex items-center justify-center gap-2"
               >
                 {isGrantingPermissions ? <RefreshCw className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
