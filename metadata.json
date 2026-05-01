@@ -1,0 +1,6 @@
+{
+  "name": "SonicMorph AI",
+  "description": "Professional bulk music restyler and signature morpher. Change music structure, tempo, and titles using AI to create unique versions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["AI Renaming", "Bulk Processing", "Audio Morphing"]
+}
