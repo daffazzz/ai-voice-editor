@@ -1,7 +1,7 @@
 import { RobloxSettings, RobloxUploadStatus } from '../types';
 
-const CREATE_ASSET_URL = 'https://apis.roblox.com/assets/v1/assets';
-const OPERATION_URL = 'https://apis.roblox.com/assets/v1';
+const CREATE_ASSET_URL = '/api/roblox-assets';
+const OPERATION_URL = '/api/roblox-operation';
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLL_ATTEMPTS = 60;
 
@@ -53,7 +53,7 @@ export async function uploadAudioToRoblox(
   const createResponse = await fetch(CREATE_ASSET_URL, {
     method: 'POST',
     headers: {
-      'x-api-key': settings.apiKey.trim(),
+      'x-roblox-api-key': settings.apiKey.trim(),
     },
     body: form,
   });
@@ -102,9 +102,9 @@ export async function uploadAudioToRoblox(
 
 async function getOperation(operationPath: string, apiKey: string): Promise<RobloxOperation> {
   const operationId = operationPath.replace(/^operations\//, '');
-  const response = await fetch(`${OPERATION_URL}/operations/${encodeURIComponent(operationId)}`, {
+  const response = await fetch(`${OPERATION_URL}?operationId=${encodeURIComponent(operationId)}`, {
     headers: {
-      'x-api-key': apiKey.trim(),
+      'x-roblox-api-key': apiKey.trim(),
     },
   });
 
