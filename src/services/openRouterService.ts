@@ -46,7 +46,7 @@ export async function generateNewTitle(originalTitle: string, mode: RenameMode =
     }
 
     const data = await response.json();
-    const title = cleanTitle(data?.choices?.[0]?.message?.content);
+    const title = finalizeGeneratedTitle(cleanTitle(data?.choices?.[0]?.message?.content), originalTitle, mode);
 
     if (!title || isTooSimilarTitle(originalTitle, title)) {
       return mode === 'clean' ? createCleanFallbackTitle(originalTitle) : createFallbackTitle(originalTitle);
@@ -102,6 +102,16 @@ function cleanTitle(value: unknown): string {
     .trim() || '';
 }
 
+function finalizeGeneratedTitle(candidateTitle: string, originalTitle: string, mode: RenameMode): string {
+  if (mode !== 'clean') return candidateTitle;
+
+  const cleanedCandidate = createCleanFallbackTitle(candidateTitle || originalTitle);
+  const cleanedOriginal = createCleanFallbackTitle(originalTitle);
+  const candidateChanged = normalizeTitle(cleanedCandidate) !== normalizeTitle(originalTitle);
+
+  return candidateChanged ? cleanedCandidate : cleanedOriginal;
+}
+
 function isTooSimilarTitle(originalTitle: string, candidateTitle: string): boolean {
   const original = normalizeTitle(originalTitle);
   const candidate = normalizeTitle(candidateTitle);
@@ -134,13 +144,8 @@ function getMeaningfulWords(title: string): string[] {
 
 function createCleanFallbackTitle(originalTitle: string): string {
   const withoutExtension = originalTitle.replace(/\.[a-z0-9]+$/i, '');
-  const withoutCredits = withoutExtension
-    .replace(/\([^)]*(official|audio|lyrics?|remix|cover|feat\.?|ft\.?|prod\.?|visualizer)[^)]*\)/gi, '')
-    .replace(/\[[^\]]*(official|audio|lyrics?|remix|cover|feat\.?|ft\.?|prod\.?|visualizer)[^\]]*\]/gi, '')
-    .replace(/\s+(feat\.?|ft\.?|prod\.?|by)\s+.+$/i, '')
-    .replace(/\s+-\s+.+$/i, '')
-    .replace(/^.+\s+-\s+/i, '')
-    .replace(/\b(official|audio|lyrics?|visualizer|remix|cover)\b/gi, '')
+  const withoutCredits = removeCreditAndVersionText(withoutExtension)
+    .replace(/\b(official|audio|lyrics?|visualizer|remix|cover|slowed|sped\s*up|speed\s*up)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
   const softened = softenSensitiveWords(withoutCredits || withoutExtension);
@@ -148,8 +153,40 @@ function createCleanFallbackTitle(originalTitle: string): string {
   return toTitleCase(softened || createFallbackTitle(originalTitle));
 }
 
+function removeCreditAndVersionText(title: string): string {
+  const compactTitle = title
+    .replace(/\([^)]*(official|audio|lyrics?|remix|cover|feat\.?|ft\.?|prod\.?|visualizer)[^)]*\)/gi, '')
+    .replace(/\[[^\]]*(official|audio|lyrics?|remix|cover|feat\.?|ft\.?|prod\.?|visualizer)[^\]]*\]/gi, '')
+    .replace(/\s+(feat\.?|ft\.?|prod\.?|by)\s+.+$/i, '')
+    .replace(/\s+/g, ' ');
+
+  const hyphenParts = compactTitle.split(/\s+-\s+/).map(part => part.trim()).filter(Boolean);
+  if (hyphenParts.length >= 2) {
+    const left = hyphenParts[0];
+    const right = hyphenParts.slice(1).join(' ');
+    const rightLooksLikeVersion = /\b(slowed|sped\s*up|speed\s*up|remix|cover|lyrics?|official|audio|visualizer)\b/i.test(right);
+    return rightLooksLikeVersion ? left : right;
+  }
+
+  return compactTitle.trim();
+}
+
 function softenSensitiveWords(title: string): string {
   const replacements: Record<string, string> = {
+    gantung: 'Menunggu',
+    menggantung: 'Tertahan',
+    bunuh: 'Hilang',
+    membunuh: 'Menghilang',
+    mati: 'Pergi',
+    kematian: 'Akhir',
+    darah: 'Luka',
+    racun: 'Bayang',
+    hancur: 'Retak',
+    benci: 'Luka',
+    teror: 'Gelap',
+    terror: 'Dark',
+    terrorist: 'Shadow',
+    terrorism: 'Darkness',
     kill: 'Stop',
     killer: 'Shadow',
     murder: 'Trouble',
