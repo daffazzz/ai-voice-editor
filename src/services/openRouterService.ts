@@ -1,6 +1,6 @@
 import type { RenameMode } from '../types';
 
-const OPENROUTER_MODEL = 'openai/gpt-oss-120b:free';
+const OPENROUTER_MODEL = 'tencent/hy3-preview:free';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const FALLBACK_MODIFIERS = ['New', 'Deep', 'Soft', 'Wild', 'Late', 'Lost', 'Bright', 'Quiet', 'Slow', 'Golden', 'Electric', 'Hidden'];
 const FALLBACK_SUFFIXES = ['Version', 'Feeling', 'Story', 'Memory', 'Echo', 'Signal', 'Dream', 'Motion', 'Scene', 'Moment', 'Shadow', 'Light'];
