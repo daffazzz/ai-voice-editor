@@ -83,6 +83,7 @@ Requirements:
 - Keep the core song title recognizable and close to the original.
 - Remove artist, author, channel, uploader, or writer names when they appear in patterns like "Artist - Title", "Title - Artist", "Title by Artist", "feat.", "ft.", "x", "prod.", "official audio", "lyrics", "remix", "cover", or bracketed credits.
 - If the title contains sensitive, explicit, hateful, violent, drug, sexual, or profanity words, replace only those words with safer neutral wording.
+- Dating or romance is allowed only when mild. Keep words like "love" when they are neutral, but remove or soften suggestive/personal phrasing such as baby, kiss, touch, your body, your waist, your lips, or similar wording.
 - Do not invent a completely new theme.
 - Do not add moon, space, galaxy, horizon, afterglow, mirage, pulse, drift, signal, cascade, or echo unless that wording already exists in the original.
 - Return only the cleaned title string, Title Case, 1 to 5 words.
@@ -148,7 +149,7 @@ function createCleanFallbackTitle(originalTitle: string): string {
     .replace(/\b(official|audio|lyrics?|visualizer|remix|cover|slowed|sped\s*up|speed\s*up)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
-  const softened = softenSensitiveWords(withoutCredits || withoutExtension);
+  const softened = softenSensitiveWords(softenDatingPhrases(withoutCredits || withoutExtension));
 
   return toTitleCase(softened || createFallbackTitle(originalTitle));
 }
@@ -197,6 +198,20 @@ function softenSensitiveWords(title: string): string {
     drugs: 'Rush',
     sex: 'Love',
     sexy: 'Sweet',
+    baby: 'Dear',
+    babe: 'Dear',
+    kiss: 'Miss',
+    kissing: 'Missing',
+    touch: 'Feel',
+    touching: 'Feeling',
+    lips: 'Smile',
+    lip: 'Smile',
+    body: 'Heart',
+    waist: 'Dance',
+    bed: 'Dream',
+    naked: 'Open',
+    nude: 'Plain',
+    hot: 'Bright',
     fuck: 'Forget',
     shit: 'Mess',
     bitch: 'Girl',
@@ -204,6 +219,15 @@ function softenSensitiveWords(title: string): string {
   };
 
   return title.replace(/\b[a-z]+\b/gi, word => replacements[word.toLowerCase()] || word);
+}
+
+function softenDatingPhrases(title: string): string {
+  return title
+    .replace(/\byour\s+(body|waist|lips?|skin|touch|kiss|bed)\b/gi, 'your heart')
+    .replace(/\bi\s+love\s+your\s+what\b/gi, 'I Love Your Heart')
+    .replace(/\bbaby\s+i\s+love\s+your\b/gi, 'Dear I Love Your')
+    .replace(/\bcome\s+to\s+me\b/gi, 'Stay With Me')
+    .replace(/\bhold\s+me\s+tight\b/gi, 'Hold This Feeling');
 }
 
 function createFallbackTitle(originalTitle: string): string {

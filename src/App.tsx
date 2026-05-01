@@ -397,7 +397,7 @@ export default function App() {
                <span className="text-orange-400">{globalSettings.pitch.toFixed(1)} ST</span>
              </div>
              <input 
-               type="range" min="-2" max="2" step="0.1" 
+               type="range" min="-3" max="3" step="0.1" 
                value={globalSettings.pitch}
                onChange={(e) => setGlobalSettings(prev => ({ ...prev, pitch: parseFloat(e.target.value) }))}
                className="w-full accent-orange-500 h-1 rounded-full cursor-pointer"
