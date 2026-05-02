@@ -12,7 +12,7 @@ const app = express();
 
 app.use('/api/roblox-assets', rawBodyMiddleware(MAX_UPLOAD_SIZE), wrapHandler(robloxAssets));
 app.use('/api/roblox-operation', wrapHandler(robloxOperation));
-app.use('/api/roblox-asset-permissions', wrapHandler(robloxAssetPermissions));
+app.use('/api/roblox-asset-permissions', express.json({ limit: '2mb' }), wrapHandler(robloxAssetPermissions));
 app.use('/api/roblox-inventory-assets', wrapHandler(robloxInventoryAssets));
 
 const vite = await createViteServer({
