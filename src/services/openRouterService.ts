@@ -28,7 +28,7 @@ export async function generateNewTitle(originalTitle: string, mode: RenameMode =
           {
             role: 'system',
             content: mode === 'clean'
-              ? 'You clean song titles for Roblox release metadata. Keep the original title recognizable, but make it safe for Roblox moderation. Remove artist/author names and unsafe wording when needed. Never return an explanation.'
+              ? 'You detect the real song title from messy YouTube audio filenames for Roblox release metadata. Return only the cleaned core song title, safe for Roblox moderation. Never return an explanation.'
               : 'You rename songs for Roblox release metadata. Return one polished title that clearly relates to the original title, avoids Roblox moderation risk, and does not become generic. Never return an explanation.',
           },
           {
@@ -79,20 +79,25 @@ Original Title: ${originalTitle}`;
 }
 
 function getCleanTitlePrompt(originalTitle: string): string {
-  return `Clean this uploaded song title without fully rewriting it.
+  return `Detect the real core song title from this messy YouTube audio filename.
 
 Requirements:
-- Keep the core song title recognizable and close to the original.
-- Remove artist, author, channel, uploader, or writer names when they appear in patterns like "Artist - Title", "Title - Artist", "Title by Artist", "feat.", "ft.", "x", "prod.", "official audio", "lyrics", "remix", "cover", or bracketed credits.
+- The input may contain artist names, channel names, uploader names, genre/version tags, hype words, or YouTube noise.
+- Return the actual song title only.
+- Remove artist, author, channel, uploader, writer, and performer names.
+- Remove tags like cover, reggae, slowed, sped up, remix, lyrics, official audio, visualizer, karaoke, live, full album, DJ, version, and bracketed credits.
+- If the filename has several dash-separated parts, choose the part that is most likely the song title, not the artist/channel/version tag.
+- Example: "Angin - Radja By Shifa Vibes Cover Reggae" -> "Angin".
+- Example: "Ed Sheeran - Perfect" -> "Perfect".
+- Example: "ENAKKK BANGETTT!!! - BUKIT BERBUNGA COVER REGGAE - REGGAE IN" -> "Bukit Berbunga".
 - If the title contains sensitive, explicit, hateful, violent, drug, sexual, or profanity words, replace only those words with safer neutral wording.
 - Dating or romance is allowed only when mild. Keep words like "love" when they are neutral, but remove or soften suggestive/personal phrasing such as baby, kiss, touch, your body, your waist, your lips, or similar wording.
 - If any wording may conflict with Roblox moderation, replace it with a safer neutral phrase even if the original theme changes slightly.
 - Avoid references to self-harm, hanging, death, murder, terror, weapons, hate, drugs, explicit romance, body parts, profanity, sexual wording, or targeted insults.
 - Do not invent a completely new theme.
-- Do not add moon, space, galaxy, horizon, afterglow, mirage, pulse, drift, signal, cascade, or echo unless that wording already exists in the original.
 - Return only the cleaned title string, Title Case, 1 to 5 words.
 
-Original Title: ${originalTitle}`;
+Filename: ${originalTitle}`;
 }
 
 function cleanTitle(value: unknown): string {
@@ -167,6 +172,9 @@ function removeCreditAndVersionText(title: string): string {
 
   const hyphenParts = compactTitle.split(/\s+-\s+/).map(part => part.trim()).filter(Boolean);
   if (hyphenParts.length >= 2) {
+    const meaningfulPart = hyphenParts.find(part => looksLikeSongTitleText(part));
+    if (meaningfulPart) return meaningfulPart;
+
     const left = hyphenParts[0];
     const right = hyphenParts.slice(1).join(' ');
     const leftLooksLikeCredit = looksLikeCreditText(left);
@@ -204,6 +212,17 @@ function looksLikeCreditText(value: string): boolean {
   ];
 
   return creditWords.some(word => text.includes(word));
+}
+
+function looksLikeSongTitleText(value: string): boolean {
+  const text = value.toLowerCase();
+  const normalizedWords = text.match(/[a-z0-9]+/gi) || [];
+
+  if (looksLikeCreditText(value)) return false;
+  if (normalizedWords.length === 0 || normalizedWords.length > 5) return false;
+  if (/!{2,}|mantap|enak+k*|banget+t*|viral|terbaru|full|mp3|video|music/i.test(text)) return false;
+
+  return normalizedWords.some(word => word.length > 3);
 }
 
 function softenSensitiveWords(title: string): string {
