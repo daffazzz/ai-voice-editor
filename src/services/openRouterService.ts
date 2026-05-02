@@ -85,11 +85,12 @@ Requirements:
 - The input may contain artist names, channel names, uploader names, genre/version tags, hype words, or YouTube noise.
 - Return the actual song title only.
 - Remove artist, author, channel, uploader, writer, and performer names.
-- Remove tags like cover, reggae, slowed, sped up, remix, lyrics, official audio, visualizer, karaoke, live, full album, DJ, version, and bracketed credits.
+- Remove junk tags like lyrics, official audio, visualizer, karaoke, live, full album, DJ, version, and bracketed credits.
+- Keep useful style/version words like Reggae, Slowed, Remix, Cover, Koplo, Acoustic, Dangdut, Phonk, or Lo-Fi when they describe the track version, but place them after the core title.
 - If the filename has several dash-separated parts, choose the part that is most likely the song title, not the artist/channel/version tag.
 - Example: "Angin - Radja By Shifa Vibes Cover Reggae" -> "Angin".
 - Example: "Ed Sheeran - Perfect" -> "Perfect".
-- Example: "ENAKKK BANGETTT!!! - BUKIT BERBUNGA COVER REGGAE - REGGAE IN" -> "Bukit Berbunga".
+- Example: "ENAKKK BANGETTT!!! - BUKIT BERBUNGA COVER REGGAE - REGGAE IN" -> "Bukit Berbunga Reggae".
 - If the title contains sensitive, explicit, hateful, violent, drug, sexual, or profanity words, replace only those words with safer neutral wording.
 - Dating or romance is allowed only when mild. Keep words like "love" when they are neutral, but remove or soften suggestive/personal phrasing such as baby, kiss, touch, your body, your waist, your lips, or similar wording.
 - If any wording may conflict with Roblox moderation, replace it with a safer neutral phrase even if the original theme changes slightly.
@@ -155,10 +156,11 @@ function getMeaningfulWords(title: string): string[] {
 function createCleanFallbackTitle(originalTitle: string): string {
   const withoutExtension = originalTitle.replace(/\.[a-z0-9]+$/i, '');
   const withoutCredits = removeCreditAndVersionText(withoutExtension)
-    .replace(/\b(official|audio|lyrics?|visualizer|remix|cover|slowed|sped\s*up|speed\s*up)\b/gi, '')
+    .replace(/\b(official|audio|lyrics?|visualizer|karaoke|live|full\s*album|version|dj)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
-  const softened = softenSensitiveWords(softenDatingPhrases(withoutCredits || withoutExtension));
+  const withVersion = appendDetectedVersion(withoutCredits || withoutExtension, withoutExtension);
+  const softened = softenSensitiveWords(softenDatingPhrases(withVersion));
 
   return toTitleCase(softened || createFallbackTitle(originalTitle));
 }
@@ -193,12 +195,6 @@ function looksLikeCreditText(value: string): boolean {
   const text = value.toLowerCase();
   const creditWords = [
     'by',
-    'cover',
-    'reggae',
-    'slowed',
-    'sped up',
-    'speed up',
-    'remix',
     'lyrics',
     'official',
     'audio',
@@ -223,6 +219,19 @@ function looksLikeSongTitleText(value: string): boolean {
   if (/!{2,}|mantap|enak+k*|banget+t*|viral|terbaru|full|mp3|video|music/i.test(text)) return false;
 
   return normalizedWords.some(word => word.length > 3);
+}
+
+function appendDetectedVersion(title: string, originalTitle: string): string {
+  const versionWords = ['reggae', 'slowed', 'sped up', 'speed up', 'remix', 'cover', 'koplo', 'acoustic', 'dangdut', 'phonk', 'lofi', 'lo fi'];
+  const titleLower = title.toLowerCase();
+  const detectedVersion = versionWords.find(word => {
+    const pattern = new RegExp(`\\b${word.replace(/\s+/g, '\\s*')}\\b`, 'i');
+    return pattern.test(originalTitle) && !pattern.test(titleLower);
+  });
+
+  if (!detectedVersion) return title;
+
+  return `${title} ${toTitleCase(detectedVersion.replace(/\s+/g, ' '))}`;
 }
 
 function softenSensitiveWords(title: string): string {
