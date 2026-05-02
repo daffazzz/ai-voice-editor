@@ -169,11 +169,41 @@ function removeCreditAndVersionText(title: string): string {
   if (hyphenParts.length >= 2) {
     const left = hyphenParts[0];
     const right = hyphenParts.slice(1).join(' ');
-    const rightLooksLikeVersion = /\b(slowed|sped\s*up|speed\s*up|remix|cover|lyrics?|official|audio|visualizer)\b/i.test(right);
-    return rightLooksLikeVersion ? left : right;
+    const leftLooksLikeCredit = looksLikeCreditText(left);
+    const rightLooksLikeCredit = looksLikeCreditText(right);
+
+    if (rightLooksLikeCredit && !leftLooksLikeCredit) return left;
+    if (leftLooksLikeCredit && !rightLooksLikeCredit) return right;
+    if (rightLooksLikeCredit) return left;
+    return left.length <= right.length ? left : right;
   }
 
   return compactTitle.trim();
+}
+
+function looksLikeCreditText(value: string): boolean {
+  const text = value.toLowerCase();
+  const creditWords = [
+    'by',
+    'cover',
+    'reggae',
+    'slowed',
+    'sped up',
+    'speed up',
+    'remix',
+    'lyrics',
+    'official',
+    'audio',
+    'visualizer',
+    'vibes',
+    'sand the beach',
+    'shifa',
+    'feat',
+    'ft',
+    'prod',
+  ];
+
+  return creditWords.some(word => text.includes(word));
 }
 
 function softenSensitiveWords(title: string): string {
