@@ -28,8 +28,8 @@ export async function generateNewTitle(originalTitle: string, mode: RenameMode =
           {
             role: 'system',
             content: mode === 'clean'
-              ? 'You clean song titles for release metadata. Keep the original title recognizable. Remove artist/author names and unsafe wording only when needed. Never return an explanation.'
-              : 'You rename songs for release metadata. Return one polished title that clearly relates to the original title without becoming generic. Never return an explanation.',
+              ? 'You clean song titles for Roblox release metadata. Keep the original title recognizable, but make it safe for Roblox moderation. Remove artist/author names and unsafe wording when needed. Never return an explanation.'
+              : 'You rename songs for Roblox release metadata. Return one polished title that clearly relates to the original title, avoids Roblox moderation risk, and does not become generic. Never return an explanation.',
           },
           {
             role: 'user',
@@ -66,6 +66,8 @@ Requirements:
 - Preserve the meaning, mood, language, and genre context of the original title.
 - Prefer a natural variation, alternate phrase, or related image over a vague generic title.
 - Keep the new title clearly connected to the original title's theme, feeling, or subject.
+- If any wording may conflict with Roblox moderation, replace it with a safer neutral phrase.
+- Avoid references to violence, self-harm, terror, hate, drugs, explicit romance, body parts, profanity, sexual wording, or targeted insults.
 - Do not force outer-space, moon, planet, galaxy, nebula, orbit, comet, satellite, or cosmic wording unless the original title already has that theme.
 - Do not only change capitalization, punctuation, spacing, or word order.
 - You may reuse one important original word when needed to keep the title related, but do not return the exact same title.
@@ -84,6 +86,8 @@ Requirements:
 - Remove artist, author, channel, uploader, or writer names when they appear in patterns like "Artist - Title", "Title - Artist", "Title by Artist", "feat.", "ft.", "x", "prod.", "official audio", "lyrics", "remix", "cover", or bracketed credits.
 - If the title contains sensitive, explicit, hateful, violent, drug, sexual, or profanity words, replace only those words with safer neutral wording.
 - Dating or romance is allowed only when mild. Keep words like "love" when they are neutral, but remove or soften suggestive/personal phrasing such as baby, kiss, touch, your body, your waist, your lips, or similar wording.
+- If any wording may conflict with Roblox moderation, replace it with a safer neutral phrase even if the original theme changes slightly.
+- Avoid references to self-harm, hanging, death, murder, terror, weapons, hate, drugs, explicit romance, body parts, profanity, sexual wording, or targeted insults.
 - Do not invent a completely new theme.
 - Do not add moon, space, galaxy, horizon, afterglow, mirage, pulse, drift, signal, cascade, or echo unless that wording already exists in the original.
 - Return only the cleaned title string, Title Case, 1 to 5 words.
@@ -188,14 +192,36 @@ function softenSensitiveWords(title: string): string {
     terror: 'Dark',
     terrorist: 'Shadow',
     terrorism: 'Darkness',
+    weapon: 'Tool',
+    weapons: 'Tools',
+    gun: 'Beat',
+    guns: 'Beats',
+    pistol: 'Beat',
+    knife: 'Edge',
+    knives: 'Edges',
+    bomb: 'Drop',
+    bombs: 'Drops',
+    suicide: 'Goodbye',
+    selfharm: 'Pain',
+    gore: 'Scene',
+    blood: 'Luka',
+    bloody: 'Luka',
     kill: 'Stop',
     killer: 'Shadow',
     murder: 'Trouble',
     dead: 'Lost',
     death: 'Ending',
     hate: 'Pain',
+    racist: 'Rude',
+    racism: 'Rude',
+    bully: 'Trouble',
+    bullying: 'Trouble',
+    insult: 'Words',
     drug: 'Rush',
     drugs: 'Rush',
+    weed: 'Green',
+    alcohol: 'Drink',
+    drunk: 'Dizzy',
     sex: 'Love',
     sexy: 'Sweet',
     baby: 'Dear',
