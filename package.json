@@ -14,10 +14,13 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
   },
-  "build": {
-    "appId": "com.sonicmorph.ai",
-    "productName": "SonicMorph AI",
-    "files": [
+    "build": {
+      "appId": "com.sonicmorph.ai",
+      "productName": "SonicMorph AI",
+      "directories": {
+        "output": "release"
+      },
+      "files": [
       "desktop-main.js",
       "api/**/*",
       "dist/**/*",

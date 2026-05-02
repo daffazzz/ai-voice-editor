@@ -227,6 +227,17 @@ async function parseJsonResponse<T>(response: Response): Promise<T | undefined> 
   const text = await response.text();
   if (!text) return undefined;
 
+  const trimmedText = text.trim();
+  if (
+    trimmedText.startsWith('const ') ||
+    trimmedText.startsWith('import ') ||
+    trimmedText.startsWith('export ') ||
+    trimmedText.startsWith('<!doctype') ||
+    trimmedText.startsWith('<html')
+  ) {
+    throw new Error('API route is not running on this web host. Use the Windows desktop app or local server for Roblox asset features.');
+  }
+
   try {
     return JSON.parse(text) as T;
   } catch {
