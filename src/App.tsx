@@ -41,6 +41,8 @@ export default function App() {
   const [permissionSubjectType, setPermissionSubjectType] = useState<RobloxAssetPermissionSubject>('Universe');
   const [permissionSubjectId, setPermissionSubjectId] = useState('');
   const [permissionMessage, setPermissionMessage] = useState('');
+  const [assetPlaylistName, setAssetPlaylistName] = useState('Cover Indo');
+  const [copyAssetMessage, setCopyAssetMessage] = useState('');
   const [apiConnectionMessage, setApiConnectionMessage] = useState('');
   const [isRobloxApiConnected, setIsRobloxApiConnected] = useState(false);
   const [remoteRobloxAssets, setRemoteRobloxAssets] = useState<RobloxInventoryAsset[]>([]);
@@ -201,6 +203,27 @@ export default function App() {
     }
   };
 
+  const copySelectedRobloxAssets = async () => {
+    const selectedAssets = robloxAssets.filter(asset => selectedRobloxAssetIds.includes(asset.id));
+
+    if (selectedAssets.length === 0) {
+      setCopyAssetMessage('Select at least one asset first.');
+      return;
+    }
+
+    const playlist = assetPlaylistName.trim() || 'Cover Indo';
+    const output = selectedAssets
+      .map(asset => `\t{ id = "${escapeLuaString(asset.id)}", judul = "${escapeLuaString(asset.title)}", sampul = "", playlist = "${escapeLuaString(playlist)}" },`)
+      .join('\n');
+
+    try {
+      await navigator.clipboard.writeText(output);
+      setCopyAssetMessage(`Copied ${selectedAssets.length} asset${selectedAssets.length === 1 ? '' : 's'}.`);
+    } catch {
+      setCopyAssetMessage('Clipboard failed. Select and copy from the generated text manually.');
+    }
+  };
+
   const processBatch = async () => {
     if (tracks.length === 0) return;
     setIsProcessing(true);
@@ -342,6 +365,8 @@ export default function App() {
     const seconds = totalSeconds % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
+
+  const escapeLuaString = (value: string) => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 
   return (
     <div className="min-h-screen bg-[#0a0502] text-white font-sans selection:bg-orange-500/30">
@@ -782,6 +807,29 @@ export default function App() {
                 {selectedRobloxAssetIds.length} Selected
               </div>
 
+              <label className="flex flex-col gap-2">
+                <span className="text-[10px] uppercase font-black tracking-widest text-zinc-600">Playlist Export</span>
+                <input
+                  type="text"
+                  value={assetPlaylistName}
+                  onChange={(e) => {
+                    setAssetPlaylistName(e.target.value);
+                    setCopyAssetMessage('');
+                  }}
+                  placeholder="Cover Indo"
+                  className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-violet-500"
+                />
+              </label>
+
+              <button
+                onClick={copySelectedRobloxAssets}
+                disabled={selectedRobloxAssetIds.length === 0}
+                className="w-full px-5 py-3 bg-violet-500/10 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed border border-violet-500/30 rounded-xl text-sm font-black uppercase tracking-widest text-violet-300 hover:text-black transition-colors flex items-center justify-center gap-2"
+              >
+                <Pencil className="w-4 h-4" />
+                Copy Selected
+              </button>
+
               <button
                 onClick={grantSelectedRobloxAssetPermissions}
                 disabled={isGrantingPermissions || !isRobloxApiConnected || selectedRobloxAssetIds.length === 0 || !permissionSubjectId.trim() || !robloxSettings.apiKey.trim()}
@@ -794,6 +842,12 @@ export default function App() {
               {permissionMessage && (
                 <div className={`text-xs leading-relaxed ${permissionMessage.toLowerCase().includes('failed') || permissionMessage.toLowerCase().includes('required') ? 'text-red-300' : 'text-emerald-300'}`}>
                   {permissionMessage}
+                </div>
+              )}
+
+              {copyAssetMessage && (
+                <div className={`text-xs leading-relaxed ${copyAssetMessage.toLowerCase().includes('failed') ? 'text-red-300' : 'text-violet-300'}`}>
+                  {copyAssetMessage}
                 </div>
               )}
             </div>
